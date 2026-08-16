@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "schema_version": "1.0.0",
+    "awf_version": "4.0.2",
+    "created_at": "2026-08-11T15:24:32+07:00"
+  },
+  "project": {
+    "name": "ban_hang",
+    "type": "Java Web (Servlet/JSP/JDBC/MySQL)",
+    "description": "Website Bán Hàng Thời Trang HighFashion Mini phục vụ phỏng vấn",
+    "status": "ready_to_run"
+  },
+  "tech_stack": [
+    "Java Servlet (Jakarta EE)",
+    "JSP & JSTL",
+    "JDBC Connection Pool",
+    "MySQL Database",
+    "Bootstrap 5 & Custom Glassmorphism CSS System"
+  ],
+  "features": [
+    "Database Schema & Sample Seed Data (database.sql)",
+    "Entity Models (Product, Category, User, Order, OrderDetail, CartItem)",
+    "DAO Layer (ProductDAO, CategoryDAO, UserDAO, OrderDAO)",
+    "Client Servlets (Home, Products, ProductDetail, Cart, Checkout, Login, Logout, Register)",
+    "Admin Servlets & Dashboard (AdminDashboard, AdminProducts)",
+    "Responsive Frontend Templates & Modern CSS Design System"
+  ],
+  "decisions": [
+    {
+      "decision": "Chọn chủ đề Thời trang (Quần Áo HighFashion)",
+      "reason": "Yêu cầu của người dùng"
+    },
+    {
+      "decision": "Dùng kiến trúc MVC Thuần (Model - DAO - Servlet - JSP)",
+      "reason": "Kiến trúc kinh điển dễ giải trình khi phỏng vấn Java Web"
+    }
+  ],
+  "updated_at": "2026-08-11T15:28:50+07:00"
+}
