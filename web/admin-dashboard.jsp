@@ -19,9 +19,14 @@
             <span class="badge bg-danger mb-1">ADMINISTRATOR CONTROL PANEL</span>
             <h2 class="fw-bold m-0 text-white">Bảng Quản Trị Hệ Thống</h2>
         </div>
-        <a href="${pageContext.request.contextPath}/admin/products" class="btn btn-light rounded-pill fw-bold">
-            <i class="bi bi-box-seam me-2"></i>Quản Lý Sản Phẩm
-        </a>
+        <div class="d-flex gap-2">
+            <a href="${pageContext.request.contextPath}/admin/products" class="btn btn-light rounded-pill fw-bold">
+                <i class="bi bi-box-seam me-2"></i>Quản Lý Sản Phẩm
+            </a>
+            <a href="${pageContext.request.contextPath}/admin/stores" class="btn btn-outline-light rounded-pill fw-bold">
+                <i class="bi bi-geo-alt-fill me-2"></i>Quản Lý Cửa Hàng & Bản Đồ
+            </a>
+        </div>
     </div>
 
     <!-- Stat Cards -->
@@ -99,6 +104,7 @@
                         <th>Tổng Tiền</th>
                         <th>Thanh Toán</th>
                         <th>Trạng Thái</th>
+                        <th class="text-end">Thao Tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -113,11 +119,22 @@
                                 <td><span class="badge bg-secondary"><%= o.getPaymentMethod() %></span></td>
                                 <td>
                                     <% if ("DELIVERED".equals(o.getStatus())) { %>
-                                        <span class="badge bg-success">Đã giao</span>
+                                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Đã giao</span>
                                     <% } else if ("PENDING".equals(o.getStatus())) { %>
-                                        <span class="badge bg-warning text-dark">Chờ xử lý</span>
+                                        <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Chờ xử lý</span>
                                     <% } else { %>
                                         <span class="badge bg-info"><%= o.getStatus() %></span>
+                                    <% } %>
+                                </td>
+                                <td class="text-end">
+                                    <% if ("PENDING".equals(o.getStatus())) { %>
+                                        <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=DELIVERED" 
+                                           class="btn btn-sm btn-success rounded-pill fw-bold"
+                                           onclick="return confirm('Xác nhận duyệt và hoàn tất đơn hàng #<%= o.getId() %>?');">
+                                            <i class="bi bi-check-lg me-1"></i>Duyệt đơn
+                                        </a>
+                                    <% } else { %>
+                                        <span class="text-success small fw-semibold"><i class="bi bi-check2-all me-1"></i>Đã duyệt</span>
                                     <% } %>
                                 </td>
                             </tr>

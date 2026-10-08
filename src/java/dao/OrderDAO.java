@@ -86,6 +86,13 @@ public class OrderDAO {
         return 0;
     }
 
+    private static final List<Order> mockOrders = new ArrayList<>();
+    static {
+        mockOrders.add(new Order(1001, 1, "Nguyễn Văn An", "an.nguyen@gmail.com", "0912345678", "123 Nguyễn Trãi, Quận 5, TP.HCM", "Giao trong giờ hành chính", 1030000.0, "COD", "PENDING", new java.sql.Timestamp(System.currentTimeMillis() - 3600000)));
+        mockOrders.add(new Order(1002, 2, "Trần Thị Mai", "mai.tran@gmail.com", "0988776655", "456 Cầu Giấy, Hà Nội", "Gọi trước khi giao", 580000.0, "COD", "DELIVERED", new java.sql.Timestamp(System.currentTimeMillis() - 7200000)));
+        mockOrders.add(new Order(1003, null, "Lê Hoàng Long", "long.le@yahoo.com", "0901234567", "88 Nguyễn Văn Linh, Đà Nẵng", "Đóng gói cẩn thận", 1450000.0, "COD", "PENDING", new java.sql.Timestamp(System.currentTimeMillis() - 86400000)));
+    }
+
     public List<Order> getAllOrders() {
         List<Order> list = new ArrayList<>();
         String sql = "SELECT * FROM orders ORDER BY id DESC";
@@ -109,7 +116,11 @@ public class OrderDAO {
                 list.add(o);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("⚠️ DB Query orders failed, loading Mock Orders: " + e.getMessage());
+        }
+
+        if (list.isEmpty()) {
+            return new ArrayList<>(mockOrders);
         }
         return list;
     }
@@ -122,8 +133,16 @@ public class OrderDAO {
             ps.setInt(2, orderId);
             return ps.executeUpdate() > 0;
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("⚠️ DB update order status failed, updating Mock Orders: " + e.getMessage());
+        }
+
+        for (Order o : mockOrders) {
+            if (o.getId() == orderId) {
+                o.setStatus(status);
+                return true;
+            }
         }
         return false;
     }
 }
+

@@ -32,6 +32,20 @@ public class AdminDashboardController extends HttpServlet {
         ProductDAO productDAO = new ProductDAO();
         OrderDAO orderDAO = new OrderDAO();
 
+        String action = request.getParameter("action");
+        if ("updateStatus".equals(action)) {
+            String orderIdRaw = request.getParameter("orderId");
+            String newStatus = request.getParameter("status");
+            if (orderIdRaw != null && newStatus != null) {
+                try {
+                    int orderId = Integer.parseInt(orderIdRaw);
+                    orderDAO.updateOrderStatus(orderId, newStatus);
+                } catch (Exception ignored) {}
+            }
+            response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+            return;
+        }
+
         List<Product> products = productDAO.getAllProducts();
         List<Order> orders = orderDAO.getAllOrders();
 
@@ -49,7 +63,7 @@ public class AdminDashboardController extends HttpServlet {
         request.setAttribute("ordersCount", orders.size());
         request.setAttribute("totalRevenue", totalRevenue);
         request.setAttribute("pendingOrdersCount", pendingOrdersCount);
-        request.setAttribute("recentOrders", orders.size() > 5 ? orders.subList(0, 5) : orders);
+        request.setAttribute("recentOrders", orders.size() > 8 ? orders.subList(0, 8) : orders);
 
         request.getRequestDispatcher("/admin-dashboard.jsp").forward(request, response);
     }
