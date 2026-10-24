@@ -1,0 +1,14 @@
+# Build and distribution directories
+build/
+dist/
+
+# NetBeans user-specific files
+nbproject/private/
+
+# IDE files
+.vs/
+.vscode/
+*.class
+*.vsidx
+*.wsuo
+*.suo
