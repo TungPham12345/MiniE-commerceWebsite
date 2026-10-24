@@ -1,8 +1,6 @@
 package controller;
 
-import dao.CategoryDAO;
 import dao.ProductDAO;
-import model.Category;
 import model.Product;
 
 import java.io.IOException;
@@ -23,32 +21,21 @@ public class ProductDetailController extends HttpServlet {
         request.setCharacterEncoding("UTF-8");
 
         String idRaw = request.getParameter("id");
-        if (idRaw == null || idRaw.isEmpty()) {
-            response.sendRedirect("products");
-            return;
-        }
-
+        int productId = 1;
         try {
-            int id = Integer.parseInt(idRaw);
-            ProductDAO productDAO = new ProductDAO();
-            CategoryDAO categoryDAO = new CategoryDAO();
-
-            Product product = productDAO.getProductById(id);
-            if (product == null) {
-                response.sendRedirect("products");
-                return;
+            if (idRaw != null && !idRaw.isEmpty()) {
+                productId = Integer.parseInt(idRaw);
             }
-
-            List<Product> relatedProducts = productDAO.getProductsByCategoryId(product.getCategoryId());
-            List<Category> categories = categoryDAO.getAllCategories();
-
-            request.setAttribute("product", product);
-            request.setAttribute("relatedProducts", relatedProducts);
-            request.setAttribute("categories", categories);
-
-            request.getRequestDispatcher("detail.jsp").forward(request, response);
         } catch (NumberFormatException e) {
-            response.sendRedirect("products");
+            productId = 1;
         }
+
+        ProductDAO productDAO = new ProductDAO();
+        Product product = productDAO.getProductById(productId);
+        List<Product> relatedProducts = productDAO.getProductsByCategoryId(product.getCategoryId());
+
+        request.setAttribute("product", product);
+        request.setAttribute("relatedProducts", relatedProducts);
+        request.getRequestDispatcher("detail.jsp").forward(request, response);
     }
 }

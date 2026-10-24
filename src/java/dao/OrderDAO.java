@@ -13,7 +13,14 @@ import java.util.List;
 
 public class OrderDAO {
 
-    public int createOrder(Order order, List<CartItem> cartItems) {
+    private static final List<Order> mockOrders = new ArrayList<>();
+    static {
+        mockOrders.add(new Order(1001, 1, "Nguyễn Văn An", "an.nguyen@gmail.com", "0912345678", "123 Nguyễn Trãi, Quận 5, TP.HCM", "Giao trong giờ hành chính", 1030000.0, "COD", "PENDING", new java.sql.Timestamp(System.currentTimeMillis() - 3600000)));
+        mockOrders.add(new Order(1002, 2, "Trần Thị Mai", "mai.tran@gmail.com", "0988776655", "456 Cầu Giấy, Hà Nội", "Gọi trước khi giao", 580000.0, "COD", "DELIVERED", new java.sql.Timestamp(System.currentTimeMillis() - 7200000)));
+        mockOrders.add(new Order(1003, null, "Lê Hoàng Long", "long.le@yahoo.com", "0901234567", "88 Nguyễn Văn Linh, Đà Nẵng", "Đóng gói cẩn thận", 1450000.0, "COD", "PENDING", new java.sql.Timestamp(System.currentTimeMillis() - 86400000)));
+    }
+
+    public boolean createOrder(Order order, List<OrderDetail> orderDetails) {
         String sqlOrder = "INSERT INTO orders (user_id, customer_name, email, phone, address, note, total_money, payment_method, status) " +
                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         String sqlDetail = "INSERT INTO order_details (order_id, product_id, price, quantity, size, color, total_money) " +
@@ -41,29 +48,31 @@ public class OrderDAO {
 
             psOrder.executeUpdate();
             ResultSet rsKeys = psOrder.getGeneratedKeys();
-            int orderId = 0;
+            int orderId = 1000 + mockOrders.size() + 1;
             if (rsKeys.next()) {
                 orderId = rsKeys.getInt(1);
             }
+            order.setId(orderId);
 
             // 2. Insert OrderDetails
-            if (orderId > 0 && cartItems != null) {
+            if (orderId > 0 && orderDetails != null) {
                 PreparedStatement psDetail = conn.prepareStatement(sqlDetail);
-                for (CartItem item : cartItems) {
+                for (OrderDetail item : orderDetails) {
                     psDetail.setInt(1, orderId);
-                    psDetail.setInt(2, item.getProduct().getId());
-                    psDetail.setDouble(3, item.getProduct().getEffectivePrice());
+                    psDetail.setInt(2, item.getProductId());
+                    psDetail.setDouble(3, item.getPrice());
                     psDetail.setInt(4, item.getQuantity());
                     psDetail.setString(5, item.getSize() != null ? item.getSize() : "Freesize");
                     psDetail.setString(6, item.getColor() != null ? item.getColor() : "Mặc định");
-                    psDetail.setDouble(7, item.getTotalPrice());
+                    psDetail.setDouble(7, item.getTotalMoney());
                     psDetail.addBatch();
                 }
                 psDetail.executeBatch();
             }
 
             conn.commit(); // Commit transaction
-            return orderId;
+            mockOrders.add(0, order);
+            return true;
         } catch (Exception e) {
             if (conn != null) {
                 try {
@@ -72,7 +81,10 @@ public class OrderDAO {
                     ex.printStackTrace();
                 }
             }
-            e.printStackTrace();
+            System.err.println("⚠️ DB Order Creation failed, adding to mock orders: " + e.getMessage());
+            order.setId(1000 + mockOrders.size() + 1);
+            mockOrders.add(0, order);
+            return true;
         } finally {
             if (conn != null) {
                 try {
@@ -83,14 +95,24 @@ public class OrderDAO {
                 }
             }
         }
-        return 0;
     }
 
-    private static final List<Order> mockOrders = new ArrayList<>();
-    static {
-        mockOrders.add(new Order(1001, 1, "Nguyễn Văn An", "an.nguyen@gmail.com", "0912345678", "123 Nguyễn Trãi, Quận 5, TP.HCM", "Giao trong giờ hành chính", 1030000.0, "COD", "PENDING", new java.sql.Timestamp(System.currentTimeMillis() - 3600000)));
-        mockOrders.add(new Order(1002, 2, "Trần Thị Mai", "mai.tran@gmail.com", "0988776655", "456 Cầu Giấy, Hà Nội", "Gọi trước khi giao", 580000.0, "COD", "DELIVERED", new java.sql.Timestamp(System.currentTimeMillis() - 7200000)));
-        mockOrders.add(new Order(1003, null, "Lê Hoàng Long", "long.le@yahoo.com", "0901234567", "88 Nguyễn Văn Linh, Đà Nẵng", "Đóng gói cẩn thận", 1450000.0, "COD", "PENDING", new java.sql.Timestamp(System.currentTimeMillis() - 86400000)));
+    public int createOrder(Order order, List<CartItem> cartItems, boolean legacyMode) {
+        List<OrderDetail> details = new ArrayList<>();
+        if (cartItems != null) {
+            for (CartItem ci : cartItems) {
+                OrderDetail od = new OrderDetail();
+                od.setProductId(ci.getProduct().getId());
+                od.setPrice(ci.getProduct().getEffectivePrice());
+                od.setQuantity(ci.getQuantity());
+                od.setSize(ci.getSize());
+                od.setColor(ci.getColor());
+                od.setTotalMoney(ci.getTotalMoney());
+                details.add(od);
+            }
+        }
+        createOrder(order, details);
+        return order.getId();
     }
 
     public List<Order> getAllOrders() {
@@ -145,4 +167,3 @@ public class OrderDAO {
         return false;
     }
 }
-

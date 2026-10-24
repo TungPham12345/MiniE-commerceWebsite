@@ -27,66 +27,37 @@ public class ProductListController extends HttpServlet {
         ProductDAO productDAO = new ProductDAO();
         CategoryDAO categoryDAO = new CategoryDAO();
 
-        String catIdRaw = request.getParameter("categoryId");
+        String categoryIdRaw = request.getParameter("categoryId");
         String keyword = request.getParameter("keyword");
-        String filter = request.getParameter("filter"); 
-        String sort = request.getParameter("sort"); 
+        String sort = request.getParameter("sort");
+        String filter = request.getParameter("filter");
         String size = request.getParameter("size");
         String color = request.getParameter("color");
         String priceRange = request.getParameter("priceRange");
 
-        List<Product> products = productDAO.getAllProducts();
-        Category currentCategory = null;
+        List<Product> products;
 
-        if (catIdRaw != null && !catIdRaw.trim().isEmpty()) {
-            try {
-                int catId = Integer.parseInt(catIdRaw.trim());
-                List<Product> catProducts = productDAO.getProductsByCategoryId(catId);
-                if (catProducts != null && !catProducts.isEmpty()) {
-                    products = catProducts;
-                }
-                currentCategory = categoryDAO.getCategoryById(catId);
-            } catch (Exception e) {}
+        if (categoryIdRaw != null && !categoryIdRaw.isEmpty()) {
+            int catId = Integer.parseInt(categoryIdRaw);
+            products = productDAO.getProductsByCategoryId(catId);
+            Category cat = categoryDAO.getCategoryById(catId);
+            request.setAttribute("currentCategory", cat);
         } else if (keyword != null && !keyword.trim().isEmpty()) {
-            List<Product> searchProducts = productDAO.searchProductsByName(keyword.trim());
-            if (searchProducts != null && !searchProducts.isEmpty()) {
-                products = searchProducts;
-            }
-        }
-
-        // Preset Filters
-        if ("bestseller".equalsIgnoreCase(filter)) {
-            List<Product> featured = productDAO.getFeaturedProducts();
-            if (featured != null && !featured.isEmpty()) products = featured;
+            products = productDAO.searchProductsByName(keyword.trim());
+            request.setAttribute("keyword", keyword);
         } else if ("sale".equalsIgnoreCase(filter)) {
-            List<Product> sales = new ArrayList<>();
-            for (Product p : products) {
-                if (p.getSalePrice() > 0) sales.add(p);
-            }
-            if (!sales.isEmpty()) products = sales;
-        }
-
-        // Price Filter
-        if (priceRange != null && !priceRange.isEmpty()) {
-            List<Product> filtered = new ArrayList<>();
-            for (Product p : products) {
-                double ep = p.getEffectivePrice();
-                if ("under_500k".equals(priceRange) && ep < 500000) {
-                    filtered.add(p);
-                } else if ("500k_1m".equals(priceRange) && ep >= 500000 && ep <= 1000000) {
-                    filtered.add(p);
-                } else if ("1m_2m".equals(priceRange) && ep >= 1000000 && ep <= 2000000) {
-                    filtered.add(p);
-                } else if ("2m_3m".equals(priceRange) && ep >= 2000000 && ep <= 3000000) {
-                    filtered.add(p);
-                } else if ("above_3m".equals(priceRange) && ep > 3000000) {
-                    filtered.add(p);
+            List<Product> all = productDAO.getAllProducts();
+            products = new ArrayList<>();
+            for (Product p : all) {
+                if (p.getSalePrice() > 0 && p.getSalePrice() < p.getPrice()) {
+                    products.add(p);
                 }
             }
-            if (!filtered.isEmpty()) products = filtered;
+        } else {
+            products = productDAO.getAllProducts();
         }
 
-        // Size Filter
+        // Apply Size Filter
         if (size != null && !size.isEmpty()) {
             List<Product> filtered = new ArrayList<>();
             for (Product p : products) {
@@ -94,10 +65,11 @@ public class ProductListController extends HttpServlet {
                     filtered.add(p);
                 }
             }
-            if (!filtered.isEmpty()) products = filtered;
+            products = filtered;
+            request.setAttribute("selectedSize", size);
         }
 
-        // Color Filter
+        // Apply Color Filter
         if (color != null && !color.isEmpty()) {
             List<Product> filtered = new ArrayList<>();
             for (Product p : products) {
@@ -105,36 +77,50 @@ public class ProductListController extends HttpServlet {
                     filtered.add(p);
                 }
             }
-            if (!filtered.isEmpty()) products = filtered;
+            products = filtered;
+            request.setAttribute("selectedColor", color);
         }
 
-        // Sorting
-        if ("price_asc".equalsIgnoreCase(sort)) {
+        // Apply Price Range Filter
+        if (priceRange != null && !priceRange.isEmpty()) {
+            List<Product> filtered = new ArrayList<>();
+            for (Product p : products) {
+                double effPrice = p.getEffectivePrice();
+                if ("under_500k".equals(priceRange) && effPrice < 500000) {
+                    filtered.add(p);
+                } else if ("500k_1m".equals(priceRange) && effPrice >= 500000 && effPrice <= 1000000) {
+                    filtered.add(p);
+                } else if ("1m_2m".equals(priceRange) && effPrice > 1000000 && effPrice <= 2000000) {
+                    filtered.add(p);
+                } else if ("2m_3m".equals(priceRange) && effPrice > 2000000 && effPrice <= 3000000) {
+                    filtered.add(p);
+                } else if ("above_3m".equals(priceRange) && effPrice > 3000000) {
+                    filtered.add(p);
+                }
+            }
+            products = filtered;
+            request.setAttribute("selectedPriceRange", priceRange);
+        }
+
+        // Apply Sorting
+        if ("price_asc".equals(sort)) {
             products.sort(Comparator.comparingDouble(Product::getEffectivePrice));
-        } else if ("price_desc".equalsIgnoreCase(sort)) {
-            products.sort((p1, p2) -> Double.compare(p2.getEffectivePrice(), p1.getEffectivePrice()));
-        } else if ("new".equalsIgnoreCase(sort)) {
-            products.sort((p1, p2) -> Integer.compare(p2.getId(), p1.getId()));
-        } else if ("bestseller".equalsIgnoreCase(sort) || "featured".equalsIgnoreCase(sort)) {
-            products.sort((p1, p2) -> Boolean.compare(p2.isIsFeatured(), p1.isIsFeatured()));
-        }
-
-        // GUARANTEE FALLBACK: NEVER LEAVE PRODUCTS EMPTY!
-        if (products == null || products.isEmpty()) {
-            products = productDAO.getMockProducts();
+        } else if ("price_desc".equals(sort)) {
+            products.sort(Comparator.comparingDouble(Product::getEffectivePrice).reversed());
+        } else if ("new".equals(sort)) {
+            products.sort(Comparator.comparingInt(Product::getId).reversed());
+        } else if ("featured".equals(sort)) {
+            List<Product> featured = new ArrayList<>();
+            for (Product p : products) {
+                if (p.isIsFeatured()) featured.add(p);
+            }
+            if (!featured.isEmpty()) products = featured;
         }
 
         List<Category> categories = categoryDAO.getAllCategories();
-
         request.setAttribute("products", products);
         request.setAttribute("categories", categories);
-        request.setAttribute("currentCategory", currentCategory);
-        request.setAttribute("keyword", keyword);
-        request.setAttribute("filter", filter);
         request.setAttribute("sort", sort);
-        request.setAttribute("selectedSize", size);
-        request.setAttribute("selectedColor", color);
-        request.setAttribute("selectedPriceRange", priceRange);
 
         request.getRequestDispatcher("shop.jsp").forward(request, response);
     }

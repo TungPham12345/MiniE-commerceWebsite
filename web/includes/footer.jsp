@@ -36,7 +36,7 @@
         </div>
         <hr class="border-secondary my-4">
         <div class="text-center text-secondary small">
-            &copy; 2026 HighFashion E-Commerce Project for Job Interviews. Built with Java Servlet, JSP & MySQL.
+            &copy; 2026 HighFashion E-Commerce. All rights reserved.
         </div>
     </div>
 </footer>

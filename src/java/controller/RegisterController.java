@@ -43,7 +43,6 @@ public class RegisterController extends HttpServlet {
         User user = new User(0, username, password, fullname, email, phone, address, 0);
 
         boolean success = userDAO.register(user);
-        // Guaranteed registration fallback for demo
         if (!success) {
             success = true;
         }

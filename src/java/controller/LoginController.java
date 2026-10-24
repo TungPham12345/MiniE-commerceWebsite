@@ -26,23 +26,22 @@ public class LoginController extends HttpServlet {
         response.setContentType("text/html;charset=UTF-8");
         request.setCharacterEncoding("UTF-8");
 
-        String u = request.getParameter("username");
-        String p = request.getParameter("password");
+        String username = request.getParameter("username");
+        String password = request.getParameter("password");
 
         UserDAO userDAO = new UserDAO();
-        User user = userDAO.login(u, p);
+        User user = userDAO.login(username, password);
 
         if (user != null) {
             HttpSession session = request.getSession();
             session.setAttribute("user", user);
-
-            if (user.isAdmin()) {
-                response.sendRedirect("admin/dashboard");
+            if (user.getRole() == 1) {
+                response.sendRedirect(request.getContextPath() + "/admin/dashboard");
             } else {
-                response.sendRedirect("home");
+                response.sendRedirect(request.getContextPath() + "/home");
             }
         } else {
-            request.setAttribute("errorMessage", "❌ Tên đăng nhập hoặc mật khẩu không chính xác!");
+            request.setAttribute("error", "Tên đăng nhập hoặc mật khẩu không chính xác!");
             request.getRequestDispatcher("login.jsp").forward(request, response);
         }
     }

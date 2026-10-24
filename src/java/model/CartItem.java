@@ -54,4 +54,8 @@ public class CartItem implements Serializable {
         if (product == null) return 0;
         return product.getEffectivePrice() * quantity;
     }
+
+    public double getTotalMoney() {
+        return getTotalPrice();
+    }
 }

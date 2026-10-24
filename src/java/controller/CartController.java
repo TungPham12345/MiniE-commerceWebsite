@@ -20,6 +20,23 @@ public class CartController extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        HttpSession session = request.getSession();
+        List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
+        if (cart == null) {
+            cart = new ArrayList<>();
+        }
+
+        double totalMoney = 0;
+        int totalCount = 0;
+        for (CartItem item : cart) {
+            totalMoney += item.getTotalMoney();
+            totalCount += item.getQuantity();
+        }
+
+        session.setAttribute("cartTotal", totalMoney);
+        session.setAttribute("cartSize", totalCount);
+        request.setAttribute("cart", cart);
+        request.setAttribute("totalMoney", totalMoney);
         request.getRequestDispatcher("cart.jsp").forward(request, response);
     }
 
@@ -31,60 +48,62 @@ public class CartController extends HttpServlet {
 
         String action = request.getParameter("action");
         HttpSession session = request.getSession();
-
         List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
         if (cart == null) {
             cart = new ArrayList<>();
         }
 
         ProductDAO productDAO = new ProductDAO();
-        CartItem addedItem = null;
 
         if ("add".equals(action)) {
             int productId = Integer.parseInt(request.getParameter("productId"));
             int quantity = Integer.parseInt(request.getParameter("quantity"));
             String size = request.getParameter("size");
             String color = request.getParameter("color");
-            if (size == null || size.trim().isEmpty()) size = "35";
-            if (color == null || color.trim().isEmpty()) color = "Đen";
 
             Product p = productDAO.getProductById(productId);
             if (p != null) {
-                boolean exists = false;
+                boolean found = false;
+                CartItem addedItem = null;
                 for (CartItem item : cart) {
                     if (item.getProduct().getId() == productId 
-                        && (size.equals(item.getSize())) 
-                        && (color.equals(item.getColor()))) {
+                        && item.getSize().equalsIgnoreCase(size) 
+                        && item.getColor().equalsIgnoreCase(color)) {
                         item.setQuantity(item.getQuantity() + quantity);
+                        found = true;
                         addedItem = item;
-                        exists = true;
                         break;
                     }
                 }
-                if (!exists) {
+                if (!found) {
                     addedItem = new CartItem(p, quantity, size, color);
                     cart.add(addedItem);
                 }
-            }
 
-            double totalMoney = 0;
-            for (CartItem item : cart) {
-                totalMoney += item.getTotalPrice();
-            }
+                // Update session totals
+                double total = 0;
+                int totalCount = 0;
+                for (CartItem ci : cart) {
+                    total += ci.getTotalMoney();
+                    totalCount += ci.getQuantity();
+                }
 
+                session.setAttribute("addedToCart", true);
+                session.setAttribute("lastAddedItem", addedItem);
+                session.setAttribute("cartSize", totalCount);
+                session.setAttribute("cartTotal", total);
+            }
             session.setAttribute("cart", cart);
-            session.setAttribute("cartTotal", totalMoney);
-            session.setAttribute("cartSize", cart.size());
-            session.setAttribute("addedToCart", true);
-            session.setAttribute("lastAddedItem", addedItem);
-
-            response.sendRedirect("product-detail?id=" + productId);
+            response.sendRedirect(request.getContextPath() + "/product-detail?id=" + productId);
             return;
+
         } else if ("update".equals(action)) {
             int productId = Integer.parseInt(request.getParameter("productId"));
             int quantity = Integer.parseInt(request.getParameter("quantity"));
+            String size = request.getParameter("size");
+
             for (CartItem item : cart) {
-                if (item.getProduct().getId() == productId) {
+                if (item.getProduct().getId() == productId && item.getSize().equalsIgnoreCase(size)) {
                     if (quantity <= 0) {
                         cart.remove(item);
                     } else {
@@ -95,18 +114,29 @@ public class CartController extends HttpServlet {
             }
         } else if ("remove".equals(action)) {
             int productId = Integer.parseInt(request.getParameter("productId"));
-            cart.removeIf(item -> item.getProduct().getId() == productId);
+            String size = request.getParameter("size");
+
+            cart.removeIf(item -> item.getProduct().getId() == productId && item.getSize().equalsIgnoreCase(size));
         }
 
-        double totalMoney = 0;
-        for (CartItem item : cart) {
-            totalMoney += item.getTotalPrice();
+        double total = 0;
+        int totalCount = 0;
+        for (CartItem ci : cart) {
+            total += ci.getTotalMoney();
+            totalCount += ci.getQuantity();
         }
 
         session.setAttribute("cart", cart);
-        session.setAttribute("cartTotal", totalMoney);
-        session.setAttribute("cartSize", cart.size());
+        session.setAttribute("cartTotal", total);
+        session.setAttribute("cartSize", totalCount);
+        
+        // If request is AJAX, respond with OK status
+        String requestedWith = request.getHeader("X-Requested-With");
+        if ("XMLHttpRequest".equalsIgnoreCase(requestedWith)) {
+            response.setStatus(HttpServletResponse.SC_OK);
+            return;
+        }
 
-        response.sendRedirect("cart");
+        response.sendRedirect(request.getContextPath() + "/cart");
     }
 }
