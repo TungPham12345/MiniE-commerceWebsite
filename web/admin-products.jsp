@@ -42,7 +42,15 @@
                         <tr>
                             <td class="ps-4 fw-bold">#<%= p.getId() %></td>
                             <td>
-                                <img src="<%= p.getImage() %>" alt="<%= p.getName() %>" class="rounded-3" style="width: 50px; height: 60px; object-fit: cover;">
+                                <%
+                                    String admImg = p.getImage();
+                                    if (admImg != null && !admImg.startsWith("http://") && !admImg.startsWith("https://")) {
+                                        if (!admImg.startsWith(request.getContextPath())) {
+                                            admImg = request.getContextPath() + (admImg.startsWith("/") ? "" : "/") + admImg;
+                                        }
+                                    }
+                                %>
+                                <img src="<%= admImg %>" alt="<%= p.getName() %>" class="rounded-3" style="width: 50px; height: 60px; object-fit: cover;">
                             </td>
                             <td class="fw-bold text-dark"><%= p.getName() %></td>
                             <td><span class="badge bg-light text-dark border"><%= p.getCategoryName() != null ? p.getCategoryName() : "Thời trang" %></span></td>

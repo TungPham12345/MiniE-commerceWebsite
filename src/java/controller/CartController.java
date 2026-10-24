@@ -3,9 +3,10 @@ package controller;
 
 // Import ProductDAO để lấy thông tin sản phẩm khi thêm vào giỏ
 import dao.ProductDAO;
-// Import mô hình món hàng trong giỏ (CartItem) và sản phẩm (Product)
+// Import mô hình món hàng trong giỏ (CartItem), sản phẩm (Product) và người dùng (User)
 import model.CartItem;
 import model.Product;
+import model.User;
 
 // Import các thư viện tiện ích danh sách và xử lý I/O
 import java.io.IOException;
@@ -36,6 +37,16 @@ public class CartController extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         HttpSession session = request.getSession();
+
+        // Kiểm tra bắt buộc đăng nhập để xem giỏ hàng
+        User user = (User) session.getAttribute("user");
+        if (user == null) {
+            session.setAttribute("redirectAfterLogin", request.getContextPath() + "/cart");
+            session.setAttribute("errorMessage", "⚠️ Bạn chưa đăng nhập! Vui lòng đăng nhập để xem và quản lý giỏ hàng của bạn.");
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+
         List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
         if (cart == null) {
             cart = new ArrayList<>();
@@ -74,6 +85,20 @@ public class CartController extends HttpServlet {
         // Lấy phiên làm việc hiện tại của người dùng
         HttpSession session = request.getSession();
 
+        // KIỂM TRA BẮT BUỘC ĐĂNG NHẬP: Người dùng phải đăng nhập mới được mua hàng hoặc thêm vào giỏ
+        User user = (User) session.getAttribute("user");
+        if (user == null) {
+            String productIdStr = request.getParameter("productId");
+            if (productIdStr != null && !productIdStr.trim().isEmpty()) {
+                session.setAttribute("redirectAfterLogin", request.getContextPath() + "/product-detail?id=" + productIdStr.trim());
+            } else {
+                session.setAttribute("redirectAfterLogin", request.getContextPath() + "/cart");
+            }
+            session.setAttribute("errorMessage", "⚠️ Bạn chưa đăng nhập! Vui lòng đăng nhập tài khoản trước khi mua hàng hoặc thêm vào giỏ hàng.");
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+
         // Lấy giỏ hàng từ Session ra (danh sách các CartItem)
         List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
         // Nếu giỏ hàng trong Session chưa có thì khởi tạo một danh sách mới rỗng
@@ -93,6 +118,7 @@ public class CartController extends HttpServlet {
             int quantity = Integer.parseInt(request.getParameter("quantity"));
             String size = request.getParameter("size");
             String color = request.getParameter("color");
+            String buyNow = request.getParameter("buyNow");
 
             // Gán giá trị mặc định nếu người dùng chưa chọn size hoặc màu
             if (size == null || size.trim().isEmpty()) size = "M";
@@ -131,7 +157,14 @@ public class CartController extends HttpServlet {
                 session.setAttribute("cartTotal", total);
             }
             session.setAttribute("cart", cart);
-            response.sendRedirect(request.getContextPath() + "/product-detail?id=" + productId);
+
+            // Nếu người dùng chọn "Mua ngay", chuyển thẳng tới trang Thanh toán (Checkout)
+            if ("true".equalsIgnoreCase(buyNow) || "1".equals(buyNow)) {
+                response.sendRedirect(request.getContextPath() + "/checkout");
+            } else {
+                // Nếu chọn "Thêm vào giỏ hàng", giữ người dùng ở lại trang sản phẩm để tiếp tục mua sắm
+                response.sendRedirect(request.getContextPath() + "/product-detail?id=" + productId);
+            }
             return;
 
         // ========================================================

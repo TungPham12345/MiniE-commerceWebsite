@@ -2,6 +2,16 @@
 <%
     String errorMessage = (String) request.getAttribute("errorMessage");
     String successMessage = (String) request.getAttribute("successMessage");
+    if (errorMessage == null) {
+        errorMessage = (String) session.getAttribute("errorMessage");
+        if (errorMessage != null) {
+            session.removeAttribute("errorMessage");
+        }
+    }
+    String redirectParam = request.getParameter("redirect");
+    if (errorMessage == null && redirectParam != null && !redirectParam.trim().isEmpty()) {
+        errorMessage = "⚠️ Bạn chưa đăng nhập! Vui lòng đăng nhập tài khoản trước khi mua hàng hoặc thêm vào giỏ hàng.";
+    }
 %>
 
 <jsp:include page="includes/header.jsp" />

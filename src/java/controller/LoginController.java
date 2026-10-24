@@ -31,6 +31,10 @@ public class LoginController extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        String redirect = request.getParameter("redirect");
+        if (redirect != null && !redirect.trim().isEmpty()) {
+            request.getSession().setAttribute("redirectAfterLogin", redirect.trim());
+        }
         // Chuyển tiếp (forward) yêu cầu đến trang login.jsp để hiển thị form đăng nhập
         request.getRequestDispatcher("login.jsp").forward(request, response);
     }
@@ -63,6 +67,14 @@ public class LoginController extends HttpServlet {
             HttpSession session = request.getSession();
             // Lưu đối tượng user vào Session để ghi nhớ trạng thái đã đăng nhập trên toàn hệ thống
             session.setAttribute("user", user);
+
+            // Kiểm tra xem có trang đang chờ người dùng quay lại sau đăng nhập (ví dụ: chi tiết sản phẩm / thanh toán)
+            String redirectUrl = (String) session.getAttribute("redirectAfterLogin");
+            if (redirectUrl != null && !redirectUrl.trim().isEmpty()) {
+                session.removeAttribute("redirectAfterLogin");
+                response.sendRedirect(redirectUrl);
+                return;
+            }
 
             // Kiểm tra quyền hạn của người dùng
             if (user.isAdmin()) {

@@ -583,24 +583,54 @@ body {
     font-size: 1.05rem;
 }
 
+.btn-add-to-cart {
+    background-color: #fff1f2;
+    color: #e11d48 !important;
+    border: 1.5px solid #e11d48;
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 12px 24px;
+    height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none !important;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.btn-add-to-cart:hover {
+    background-color: #e11d48;
+    color: #ffffff !important;
+    border-color: #e11d48;
+    box-shadow: 0 4px 12px rgba(225, 29, 72, 0.2);
+}
+
 .btn-buy-now {
     background-color: #e11d48;
     color: #ffffff !important;
     font-weight: 700;
-    font-size: 1.05rem;
-    padding: 12px 32px;
-    border: none;
+    font-size: 1rem;
+    padding: 12px 28px;
+    border: 1.5px solid #e11d48;
     height: 48px;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     text-decoration: none !important;
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(225, 29, 72, 0.25);
+    transition: all 0.2s ease;
 }
 
 .btn-buy-now:hover {
     background-color: #be123c;
+    border-color: #be123c;
+    box-shadow: 0 6px 16px rgba(225, 29, 72, 0.35);
 }
 
 /* Modal thông báo thêm giỏ hàng */
@@ -1235,4 +1265,33 @@ body {
         transform: translateY(0);
     }
 }
+
+/* Dark mode cho 2 nút bấm chi tiết sản phẩm và modal thông báo */
+[data-bs-theme="dark"] .btn-add-to-cart {
+    background-color: rgba(225, 29, 72, 0.15);
+    color: #fda4af !important;
+    border-color: #f43f5e;
+}
+
+[data-bs-theme="dark"] .btn-add-to-cart:hover {
+    background-color: #e11d48;
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] #cartSuccessModal .modal-content,
+[data-bs-theme="dark"] #cartSuccessModal .add-cart-header-bar,
+[data-bs-theme="dark"] #cartSuccessModal .modal-body {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+    border-color: #334155 !important;
+}
+
+[data-bs-theme="dark"] #cartSuccessModal .text-dark {
+    color: #f8fafc !important;
+}
+
+[data-bs-theme="dark"] #cartSuccessModal .btn-close {
+    filter: invert(1);
+}
+
 

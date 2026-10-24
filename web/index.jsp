@@ -125,7 +125,15 @@
                                                 <span class="product-badge">-<%= percent %>% SALE</span>
                                             <% } %>
                                             <a href="${pageContext.request.contextPath}/product-detail?id=<%= p.getId() %>">
-                                                <img src="<%= p.getImage() %>" alt="<%= p.getName() %>" 
+                                                <%
+                                                    String pImg = p.getImage();
+                                                    if (pImg != null && !pImg.startsWith("http://") && !pImg.startsWith("https://")) {
+                                                        if (!pImg.startsWith(request.getContextPath())) {
+                                                            pImg = request.getContextPath() + (pImg.startsWith("/") ? "" : "/") + pImg;
+                                                        }
+                                                    }
+                                                %>
+                                                <img src="<%= pImg %>" alt="<%= p.getName() %>" 
                                                      onerror="this.src='https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600'" loading="lazy">
                                             </a>
                                         </div>

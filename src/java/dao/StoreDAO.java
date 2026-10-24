@@ -104,24 +104,15 @@ public class StoreDAO {
     }
 
     /**
-     * Danh sách cửa hàng mẫu (Mock Stores) tại 3 thành phố lớn: TP.HCM, Hà Nội, Đà Nẵng
-     * Dùng hiển thị khi cơ sở dữ liệu chưa sẵn sàng
-     * @return Danh sách 6 chi nhánh mẫu
+     * Danh sách 3 chi nhánh cửa hàng tại Hà Nội
+     * Dùng hiển thị dự phòng khi cơ sở dữ liệu chưa sẵn sàng
+     * @return Danh sách 3 chi nhánh tại Hà Nội
      */
     public List<Store> getMockStores() {
         List<Store> list = new ArrayList<>();
-        // Chi nhánh tại TP.HCM
-        list.add(new Store(1, "HighFashion Flagship Sư Vạn Hạnh", "561 Sư Vạn Hạnh, Phường Hòa Hưng, Quận 10", "TP.HCM", "0901 234 567", "08:30 - 22:00", 10.7769, 106.6675, true));
-        list.add(new Store(2, "HighFashion Nguyễn Trãi Store", "123 Nguyễn Trãi, Phường 2, Quận 5", "TP.HCM", "0902 345 678", "09:00 - 21:30", 10.7554, 106.6792, false));
-        list.add(new Store(3, "HighFashion Lê Lợi Boutique", "456 Lê Lợi, Phường Bến Thành, Quận 1", "TP.HCM", "0903 456 789", "08:30 - 22:00", 10.7731, 106.6983, false));
-
-        // Chi nhánh tại Hà Nội
-        list.add(new Store(4, "HighFashion Hà Nội Tràng Tiền", "24 Tràng Tiền, Quận Hoàn Kiếm", "Hà Nội", "0904 567 890", "08:30 - 22:00", 21.0253, 105.8544, false));
-        list.add(new Store(5, "HighFashion Cầu Giấy Premium", "180 Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy", "Hà Nội", "0905 678 901", "09:00 - 21:30", 21.0362, 105.7905, false));
-
-        // Chi nhánh tại Đà Nẵng
-        list.add(new Store(6, "HighFashion Đà Nẵng Nguyễn Văn Linh", "88 Nguyễn Văn Linh, Quận Hải Châu", "Đà Nẵng", "0906 789 012", "08:30 - 21:30", 16.0608, 108.2155, false));
-
+        list.add(new Store(1, "HighFashion Flagship Tràng Tiền", "24 Tràng Tiền, Phường Tràng Tiền, Quận Hoàn Kiếm", "Hà Nội", "0904 567 890", "08:30 - 22:00", 21.0253, 105.8544, true));
+        list.add(new Store(2, "HighFashion Vincom Bà Triệu", "191 Bà Triệu, Phường Lê Đại Hành, Quận Hai Bà Trưng", "Hà Nội", "0902 888 999", "09:00 - 22:00", 21.0118, 105.8496, false));
+        list.add(new Store(3, "HighFashion Cầu Giấy Premium", "180 Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy", "Hà Nội", "0905 678 901", "08:30 - 22:00", 21.0335, 105.7958, false));
         return list;
     }
 }

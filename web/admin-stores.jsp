@@ -61,18 +61,23 @@
                             <tbody>
                                 <% if (stores != null) { 
                                     for (Store s : stores) { %>
-                                        <tr>
+                                        <tr style="cursor: pointer;" onclick="focusAdminStore(<%= s.getId() %>, <%= s.getLatitude() %>, <%= s.getLongitude() %>)" title="Bấm để xem trên bản đồ">
                                             <td>
-                                                <div class="fw-bold text-dark"><%= s.getName() %></div>
+                                                <div class="fw-bold text-dark">
+                                                    <i class="bi bi-geo-alt-fill text-danger me-1"></i><%= s.getName() %>
+                                                    <% if (s.isIsMain()) { %>
+                                                        <span class="badge bg-danger ms-1">Flagship</span>
+                                                    <% } %>
+                                                </div>
                                                 <div class="text-muted small"><%= s.getAddress() %></div>
                                             </td>
-                                            <td><span class="badge bg-secondary"><%= s.getCity() %></span></td>
-                                            <td class="small"><%= s.getPhone() %></td>
-                                            <td>
+                                            <td><span class="badge bg-danger"><%= s.getCity() %></span></td>
+                                            <td class="small fw-semibold"><%= s.getPhone() %></td>
+                                            <td onclick="event.stopPropagation();">
                                                 <form action="${pageContext.request.contextPath}/admin/stores" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa chi nhánh này?')">
                                                     <input type="hidden" name="action" value="delete">
                                                     <input type="hidden" name="id" value="<%= s.getId() %>">
-                                                    <button type="submit" class="btn btn-outline-danger btn-sm border-0">
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm border-0" title="Xóa chi nhánh">
                                                         <i class="bi bi-trash-fill"></i>
                                                     </button>
                                                 </form>
@@ -87,7 +92,7 @@
                 <!-- Live Interactive Map for Admin -->
                 <div class="col-lg-6">
                     <div class="bg-white border rounded-4 p-2 shadow-sm">
-                        <div id="adminMap" style="height: 535px; border-radius: 12px;"></div>
+                        <div id="adminMap" style="height: 535px; border-radius: 12px; z-index: 1;"></div>
                     </div>
                 </div>
             </div>
@@ -109,24 +114,24 @@
                     <div class="row g-3">
                         <div class="col-md-8">
                             <label class="form-label fw-bold">Tên Chi Nhánh *</label>
-                            <input type="text" name="name" class="form-control" placeholder="Ví dụ: HighFashion Sư Vạn Hạnh" required>
+                            <input type="text" name="name" class="form-control" placeholder="Ví dụ: HighFashion Tràng Tiền" required>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Thành Phố *</label>
                             <select name="city" class="form-select">
+                                <option value="Hà Nội" selected>Hà Nội</option>
                                 <option value="TP.HCM">TP.HCM</option>
-                                <option value="Hà Nội">Hà Nội</option>
                                 <option value="Đà Nẵng">Đà Nẵng</option>
                                 <option value="Khác">Khác</option>
                             </select>
                         </div>
                         <div class="col-md-12">
                             <label class="form-label fw-bold">Địa Chỉ Chi Tiết *</label>
-                            <input type="text" name="address" class="form-control" placeholder="Số nhà, tên đường, phường/xã, quận/huyện" required>
+                            <input type="text" name="address" class="form-control" placeholder="Số nhà, tên đường, phường/xã, quận/huyện, Hà Nội" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Số Điện Thoại Hotline *</label>
-                            <input type="text" name="phone" class="form-control" value="0901 234 567" required>
+                            <input type="text" name="phone" class="form-control" value="0904 567 890" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Giờ Mở Cửa *</label>
@@ -134,11 +139,11 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Vĩ Độ (Latitude) *</label>
-                            <input type="number" step="any" name="latitude" class="form-control" value="10.7769" required>
+                            <input type="number" step="any" name="latitude" class="form-control" value="21.0253" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Kinh Độ (Longitude) *</label>
-                            <input type="number" step="any" name="longitude" class="form-control" value="106.6675" required>
+                            <input type="number" step="any" name="longitude" class="form-control" value="105.8544" required>
                         </div>
                         <div class="col-md-12">
                             <div class="form-check form-switch mt-2">
@@ -159,11 +164,17 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    var adminMap = L.map('adminMap').setView([10.7769, 106.6675], 11);
+    // Khởi tạo bản đồ trung tâm Hà Nội
+    var adminMap = L.map('adminMap').setView([21.0285, 105.8342], 12);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 18,
+        attribution: '&copy; Esri &mdash; HighFashion Hà Nội'
     }).addTo(adminMap);
+
+    setTimeout(function() {
+        adminMap.invalidateSize();
+    }, 300);
 
     var redIcon = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
@@ -174,12 +185,34 @@ document.addEventListener("DOMContentLoaded", function() {
         shadowSize: [41, 41]
     });
 
-    <% if (stores != null) { 
-        for (Store s : stores) { %>
-            L.marker([<%= s.getLatitude() %>, <%= s.getLongitude() %>], {icon: redIcon})
-                .addTo(adminMap)
-                .bindPopup("<b><%= s.getName() %></b><br><%= s.getAddress() %>");
+    var markersGroup = L.featureGroup();
+    var adminMarkers = {};
+
+    <% if (stores != null && !stores.isEmpty()) { 
+        for (Store s : stores) { 
+            String popupDest = s.getAddress();
+            if (s.getCity() != null && !s.getCity().isEmpty() && !popupDest.toLowerCase().contains(s.getCity().toLowerCase())) {
+                popupDest += ", " + s.getCity();
+            }
+            String popupMapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" + java.net.URLEncoder.encode(popupDest, "UTF-8");
+    %>
+            var marker_<%= s.getId() %> = L.marker([<%= s.getLatitude() %>, <%= s.getLongitude() %>], {icon: redIcon})
+                .bindPopup("<div class='p-1'><strong><%= s.getName() %></strong><br><small class='text-muted'><%= s.getAddress() %></small><br><span class='badge bg-danger mt-1'>☎ <%= s.getPhone() %></span><br><small>⏰ <%= s.getHours() %></small><div class='mt-2'><a href='<%= popupMapsUrl %>' target='_blank' class='btn btn-danger btn-sm text-white w-100 py-1' style='font-size:12px;'><i class='bi bi-sign-turn-right-fill me-1'></i> Chỉ Đường Google Maps</a></div></div>");
+            adminMarkers[<%= s.getId() %>] = marker_<%= s.getId() %>;
+            markersGroup.addLayer(marker_<%= s.getId() %>);
     <% } } %>
+
+    markersGroup.addTo(adminMap);
+    if (markersGroup.getLayers().length > 0) {
+        adminMap.fitBounds(markersGroup.getBounds().pad(0.3));
+    }
+
+    window.focusAdminStore = function(storeId, lat, lng) {
+        adminMap.flyTo([lat, lng], 15, { animate: true, duration: 1 });
+        if (adminMarkers[storeId]) {
+            adminMarkers[storeId].openPopup();
+        }
+    };
 });
 </script>
 

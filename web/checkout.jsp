@@ -92,7 +92,15 @@
                         <% if (cart != null) {
                             for (CartItem item : cart) { %>
                                 <div class="d-flex align-items-center gap-3 mb-3 border-bottom pb-3">
-                                    <img src="<%= item.getProduct().getImage() %>" alt="<%= item.getProduct().getName() %>" class="rounded-3" style="width: 50px; height: 65px; object-fit: cover;">
+                                    <%
+                                        String coImg = item.getProduct().getImage();
+                                        if (coImg != null && !coImg.startsWith("http://") && !coImg.startsWith("https://")) {
+                                            if (!coImg.startsWith(request.getContextPath())) {
+                                                coImg = request.getContextPath() + (coImg.startsWith("/") ? "" : "/") + coImg;
+                                            }
+                                        }
+                                    %>
+                                    <img src="<%= coImg %>" alt="<%= item.getProduct().getName() %>" class="rounded-3" style="width: 50px; height: 65px; object-fit: cover;">
                                     <div class="flex-grow-1">
                                         <h6 class="fw-bold m-0 small"><%= item.getProduct().getName() %></h6>
                                         <span class="text-muted extra-small">Phân loại: <%= item.getSize() %> / <%= item.getColor() %></span>

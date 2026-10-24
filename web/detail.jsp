@@ -1,9 +1,10 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="java.util.List, model.Product, model.Category, java.text.NumberFormat, java.util.Locale, model.CartItem" %>
+<%@ page import="java.util.List, model.Product, model.Category, java.text.NumberFormat, java.util.Locale, model.CartItem, model.User" %>
 <%
     Product product = (Product) request.getAttribute("product");
     List<Product> relatedProducts = (List<Product>) request.getAttribute("relatedProducts");
     NumberFormat fmt = NumberFormat.getInstance(new Locale("vi", "VN"));
+    User currentUser = (User) session.getAttribute("user");
     
     // Check if user just added item to cart
     Boolean addedToCart = (Boolean) session.getAttribute("addedToCart");
@@ -35,7 +36,15 @@
             <!-- Product Image -->
             <div class="col-lg-6">
                 <div class="overflow-hidden border bg-light">
-                    <img src="<%= product.getImage() %>" alt="<%= product.getName() %>" 
+                    <%
+                        String prodImg = product.getImage();
+                        if (prodImg != null && !prodImg.startsWith("http://") && !prodImg.startsWith("https://")) {
+                            if (!prodImg.startsWith(request.getContextPath())) {
+                                prodImg = request.getContextPath() + (prodImg.startsWith("/") ? "" : "/") + prodImg;
+                            }
+                        }
+                    %>
+                    <img src="<%= prodImg %>" alt="<%= product.getName() %>" 
                          class="img-fluid w-100 object-fit-cover" style="max-height: 550px;"
                          onerror="this.src='https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600'">
                 </div>
@@ -64,6 +73,7 @@
                     <input type="hidden" name="productId" value="<%= product.getId() %>">
                     <input type="hidden" name="size" id="selectedSizeInput" value="<%= catId == 4 ? "Freesize" : (catId == 3 ? "S" : "M") %>">
                     <input type="hidden" name="color" value="<%= product.getColor() != null ? product.getColor().split(",")[0].trim() : "Default" %>">
+                    <input type="hidden" name="buyNow" id="buyNowInput" value="false">
 
                     <!-- SIZE Selection Grid Khác Nhau Theo Loại Sản Phẩm -->
                     <div class="size-title">SIZE SẢN PHẨM</div>
@@ -86,21 +96,27 @@
                         %>
                             <div class="size-box <%= isDefaultActive ? "active" : "" %>" 
                                  onclick="selectSize('<%= sz %>', this)">
-                                <%= sz %>
+                                 <%= sz %>
                             </div>
                         <% } %>
                     </div>
 
-                    <!-- Quantity Stepper & Buy Now Button -->
-                    <div class="d-flex align-items-center gap-3 mb-5">
+                    <!-- Quantity Stepper & 2 Lựa chọn: Thêm vào giỏ hàng trước & Mua ngay -->
+                    <div class="d-flex flex-wrap align-items-center gap-3 mb-5">
                         <div class="quantity-stepper">
                             <button type="button" onclick="changeQty(-1)">-</button>
                             <input type="number" name="quantity" id="quantityInput" value="1" min="1" max="<%= product.getQuantity() %>" readonly>
                             <button type="button" onclick="changeQty(1)">+</button>
                         </div>
 
-                        <button type="submit" class="btn-buy-now">
-                            <i class="bi bi-bag-check-fill fs-5"></i> Mua ngay
+                        <!-- Lựa chọn 1: Thêm vào giỏ hàng trước -->
+                        <button type="button" class="btn-add-to-cart" onclick="submitToCart(false)">
+                            <i class="bi bi-cart-plus fs-5"></i> Thêm vào giỏ hàng
+                        </button>
+
+                        <!-- Lựa chọn 2: Mua ngay -->
+                        <button type="button" class="btn-buy-now" onclick="submitToCart(true)">
+                            <i class="bi bi-lightning-charge-fill fs-5"></i> Mua ngay
                         </button>
                     </div>
                 </form>
@@ -269,9 +285,14 @@
                         </div>
                         <div class="collapse" id="storeStockCollapse">
                             <div class="info-accordion-body">
-                                <p class="mb-2"><i class="bi bi-geo-alt-fill text-danger me-2"></i> <strong>Chi nhánh 1:</strong> 561 Sư Vạn Hạnh, Phường Hòa Hưng, TP.HCM <span class="badge bg-success ms-2">Còn hàng</span></p>
-                                <p class="mb-2"><i class="bi bi-geo-alt-fill text-danger me-2"></i> <strong>Chi nhánh 2:</strong> 123 Nguyễn Trãi, Quận 5, TP.HCM <span class="badge bg-success ms-2">Còn hàng</span></p>
-                                <p class="mb-0"><i class="bi bi-geo-alt-fill text-danger me-2"></i> <strong>Chi nhánh 3:</strong> 456 Lê Lợi, Quận 1, TP.HCM <span class="badge bg-success ms-2">Còn hàng</span></p>
+                                <p class="mb-2"><i class="bi bi-geo-alt-fill text-danger me-2"></i> <strong>Chi nhánh 1 (Flagship):</strong> 24 Tràng Tiền, Quận Hoàn Kiếm, Hà Nội <span class="badge bg-success ms-2">Còn hàng</span></p>
+                                <p class="mb-2"><i class="bi bi-geo-alt-fill text-danger me-2"></i> <strong>Chi nhánh 2:</strong> 191 Bà Triệu, Quận Hai Bà Trưng, Hà Nội <span class="badge bg-success ms-2">Còn hàng</span></p>
+                                <p class="mb-2"><i class="bi bi-geo-alt-fill text-danger me-2"></i> <strong>Chi nhánh 3:</strong> 180 Cầu Giấy, Quận Cầu Giấy, Hà Nội <span class="badge bg-success ms-2">Còn hàng</span></p>
+                                <div class="mt-2 pt-2 border-top">
+                                    <a href="${pageContext.request.contextPath}/stores" class="text-danger small fw-bold text-decoration-none">
+                                        <i class="bi bi-map-fill me-1"></i> Xem vị trí trên bản đồ hệ thống
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -287,34 +308,52 @@
 <% if (addedToCart != null && addedToCart && lastAddedItem != null) { 
     session.removeAttribute("addedToCart");
 %>
-<div class="modal fade show d-block" id="cartSuccessModal" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+<div class="modal fade show d-block" id="cartSuccessModal" tabindex="-1" style="background: rgba(0,0,0,0.55);" onclick="if(event.target === this) closeCartModal();">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content rounded-0 border-0 shadow-lg">
-            <div class="add-cart-header-bar bg-white">
-                <div>
-                    <i class="bi bi-check-lg text-dark me-2"></i><strong>Bạn vừa thêm sản phẩm này vào giỏ hàng</strong>
+        <div class="modal-content rounded-0 border-0 shadow-lg overflow-hidden">
+            <div class="add-cart-header-bar bg-white d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-check-circle-fill text-success fs-5 me-2"></i>
+                    <strong>Bạn vừa thêm sản phẩm này vào giỏ hàng thành công!</strong>
                 </div>
-                <div>
-                    <i class="bi bi-bag-check me-2"></i>Giỏ hàng của bạn có <strong><%= cartSize %></strong> sản phẩm
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-secondary small">
+                        <i class="bi bi-bag-check me-1"></i>Giỏ hàng: <strong><%= cartSize %></strong> món
+                    </span>
+                    <button type="button" class="btn-close" aria-label="Đóng" onclick="closeCartModal()"></button>
                 </div>
             </div>
             <div class="modal-body p-4 bg-white">
                 <div class="row align-items-center g-4">
                     <div class="col-md-7">
                         <div class="d-flex align-items-center gap-3">
-                            <img src="<%= lastAddedItem.getProduct().getImage() %>" alt="<%= lastAddedItem.getProduct().getName() %>" style="width: 70px; height: 85px; object-fit: cover;">
+                            <%
+                                String lastImg = lastAddedItem.getProduct().getImage();
+                                if (lastImg != null && !lastImg.startsWith("http://") && !lastImg.startsWith("https://")) {
+                                    if (!lastImg.startsWith(request.getContextPath())) {
+                                        lastImg = request.getContextPath() + (lastImg.startsWith("/") ? "" : "/") + lastImg;
+                                    }
+                                }
+                            %>
+                            <img src="<%= lastImg %>" alt="<%= lastAddedItem.getProduct().getName() %>" style="width: 75px; height: 95px; object-fit: cover;" class="border">
                             <div>
-                                <h6 class="fw-bold text-uppercase m-0 text-dark"><%= lastAddedItem.getProduct().getName() %> - <%= lastAddedItem.getSize() %></h6>
+                                <h6 class="fw-bold text-uppercase m-0 text-dark"><%= lastAddedItem.getProduct().getName() %></h6>
+                                <div class="text-secondary small mt-1">Size: <span class="badge bg-dark"><%= lastAddedItem.getSize() %></span> | Số lượng: <strong><%= lastAddedItem.getQuantity() %></strong></div>
                                 <div class="text-danger fw-bold fs-5 mt-1"><%= fmt.format(lastAddedItem.getProduct().getEffectivePrice()) %>đ</div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-5 text-end">
-                        <div class="text-secondary small mb-1">Tổng tiền</div>
-                        <div class="fs-4 fw-extrabold text-dark mb-3"><%= fmt.format(cartTotal) %>đ</div>
-                        <a href="${pageContext.request.contextPath}/cart" class="btn-toi-gio-hang">
-                            <i class="bi bi-bag-check-fill me-1"></i> TỚI GIỎ HÀNG
-                        </a>
+                        <div class="text-secondary small mb-1">Tạm tính giỏ hàng</div>
+                        <div class="fs-4 fw-extrabold text-danger mb-3"><%= fmt.format(cartTotal) %>đ</div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-outline-secondary rounded-0 fw-bold px-3 py-2 text-uppercase small" onclick="closeCartModal()">
+                                Tiếp tục mua sắm
+                            </button>
+                            <a href="${pageContext.request.contextPath}/cart" class="btn-toi-gio-hang">
+                                <i class="bi bi-bag-check-fill me-1"></i> TỚI GIỎ HÀNG
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -342,6 +381,34 @@ function changeQty(delta) {
         input.value = val;
     }
 }
+
+function submitToCart(isBuyNow) {
+    <% if (currentUser == null) { %>
+        // Người dùng chưa đăng nhập -> Chuyển hướng về trang đăng nhập với thông báo
+        var targetDetailUrl = encodeURIComponent('${pageContext.request.contextPath}/product-detail?id=<%= product != null ? product.getId() : 1 %>');
+        window.location.href = '${pageContext.request.contextPath}/login?redirect=' + targetDetailUrl;
+        return;
+    <% } %>
+    var buyNowInput = document.getElementById('buyNowInput');
+    if (buyNowInput) {
+        buyNowInput.value = isBuyNow ? "true" : "false";
+    }
+    document.getElementById('buyForm').submit();
+}
+
+function closeCartModal() {
+    var modal = document.getElementById('cartSuccessModal');
+    if (modal) {
+        modal.classList.remove('show', 'd-block');
+        modal.style.display = 'none';
+    }
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeCartModal();
+    }
+});
 </script>
 
 <jsp:include page="includes/footer.jsp" />

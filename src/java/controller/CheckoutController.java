@@ -39,6 +39,16 @@ public class CheckoutController extends HttpServlet {
             throws ServletException, IOException {
         // Lấy phiên làm việc hiện tại
         HttpSession session = request.getSession();
+
+        // Kiểm tra bắt buộc đăng nhập để vào trang thanh toán
+        User user = (User) session.getAttribute("user");
+        if (user == null) {
+            session.setAttribute("redirectAfterLogin", request.getContextPath() + "/checkout");
+            session.setAttribute("errorMessage", "⚠️ Bạn chưa đăng nhập! Vui lòng đăng nhập trước khi tiến hành thanh toán đơn hàng.");
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+
         // Lấy danh sách các món hàng trong giỏ
         List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
 
@@ -74,9 +84,18 @@ public class CheckoutController extends HttpServlet {
 
         // Lấy đối tượng phiên làm việc (Session)
         HttpSession session = request.getSession();
+
+        // Kiểm tra bắt buộc đăng nhập trước khi xác nhận đơn hàng
+        User user = (User) session.getAttribute("user");
+        if (user == null) {
+            session.setAttribute("redirectAfterLogin", request.getContextPath() + "/checkout");
+            session.setAttribute("errorMessage", "⚠️ Bạn chưa đăng nhập! Vui lòng đăng nhập trước khi xác nhận đặt hàng.");
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+
         // Lấy danh sách sản phẩm trong giỏ hàng và tổng tiền
         List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
-        User user = (User) session.getAttribute("user");
 
         // Kiểm tra lại nếu giỏ hàng bị rỗng thì không cho đặt
         if (cart == null || cart.isEmpty()) {

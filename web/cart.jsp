@@ -41,7 +41,15 @@
                     
                     <!-- Product Info -->
                     <div style="width: 45%;" class="d-flex align-items-center gap-4">
-                        <img src="<%= item.getProduct().getImage() %>" alt="<%= item.getProduct().getName() %>" style="width: 80px; height: 100px; object-fit: cover;" class="border">
+                        <%
+                            String cartImg = item.getProduct().getImage();
+                            if (cartImg != null && !cartImg.startsWith("http://") && !cartImg.startsWith("https://")) {
+                                if (!cartImg.startsWith(request.getContextPath())) {
+                                    cartImg = request.getContextPath() + (cartImg.startsWith("/") ? "" : "/") + cartImg;
+                                }
+                            }
+                        %>
+                        <img src="<%= cartImg %>" alt="<%= item.getProduct().getName() %>" style="width: 80px; height: 100px; object-fit: cover;" class="border">
                         <div>
                             <h6 class="fw-bold text-uppercase m-0 text-dark" style="letter-spacing: 0.5px;"><%= item.getProduct().getName() %></h6>
                             <div class="text-secondary small mt-1">Size: <span class="fw-bold text-dark"><%= item.getSize() %></span></div>
