@@ -32,25 +32,29 @@
                     <h4 class="fw-bold mb-4">Thông Tin Giao Hàng</h4>
                     <div class="row g-3">
                         <div class="col-12">
-                            <label class="form-label fw-bold">Họ và Tên người nhận *</label>
-                            <input type="text" name="customerName" class="form-control rounded-3 py-2" required 
+                            <label class="form-label fw-bold">Họ và Tên người nhận <span class="text-danger fw-bold">*</span></label>
+                            <input type="text" name="customerName" class="form-control rounded-3 py-2 required-input" required 
                                    value="<%= currentUser != null ? currentUser.getFullname() : "" %>">
+                            <div class="invalid-feedback"><i class="bi bi-exclamation-circle me-1"></i>Đây là trường bắt buộc</div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Email nhận hóa đơn *</label>
-                            <input type="email" name="email" class="form-control rounded-3 py-2" required 
+                            <label class="form-label fw-bold">Email nhận hóa đơn <span class="text-danger fw-bold">*</span></label>
+                            <input type="email" name="email" class="form-control rounded-3 py-2 required-input" required 
                                    value="<%= currentUser != null ? currentUser.getEmail() : "" %>">
+                            <div class="invalid-feedback"><i class="bi bi-exclamation-circle me-1"></i>Đây là trường bắt buộc</div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Số điện thoại giao hàng *</label>
-                            <input type="tel" name="phone" class="form-control rounded-3 py-2" required 
+                            <label class="form-label fw-bold">Số điện thoại giao hàng <span class="text-danger fw-bold">*</span></label>
+                            <input type="tel" name="phone" class="form-control rounded-3 py-2 required-input" required 
                                    value="<%= currentUser != null ? currentUser.getPhone() : "" %>">
+                            <div class="invalid-feedback"><i class="bi bi-exclamation-circle me-1"></i>Đây là trường bắt buộc</div>
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-bold">Địa chỉ nhận hàng cụ thể *</label>
-                            <input type="text" name="address" class="form-control rounded-3 py-2" required 
+                            <label class="form-label fw-bold">Địa chỉ nhận hàng cụ thể <span class="text-danger fw-bold">*</span></label>
+                            <input type="text" name="address" class="form-control rounded-3 py-2 required-input" required 
                                    placeholder="Ví dụ: Số 123 Đường Nguyễn Trãi, Phường 2, Quận 5, TP.HCM"
                                    value="<%= currentUser != null ? currentUser.getAddress() : "" %>">
+                            <div class="invalid-feedback"><i class="bi bi-exclamation-circle me-1"></i>Đây là trường bắt buộc</div>
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-bold">Ghi chú cho shipper (Tùy chọn)</label>
@@ -121,6 +125,45 @@
             </div>
         </div>
     </form>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const form = document.querySelector("form[action*='checkout']");
+        if (!form) return;
+        const inputs = form.querySelectorAll(".required-input");
+        function validate(input) {
+            const val = input.value.trim();
+            const feedback = input.parentElement.querySelector(".invalid-feedback");
+            if (!val) {
+                input.classList.add("is-invalid");
+                if (feedback) feedback.style.display = "block";
+                return false;
+            } else {
+                input.classList.remove("is-invalid");
+                if (feedback) feedback.style.display = "none";
+                return true;
+            }
+        }
+        inputs.forEach(input => {
+            input.addEventListener("blur", function() { validate(this); });
+            input.addEventListener("input", function() { if (this.classList.contains("is-invalid")) validate(this); });
+        });
+        form.addEventListener("submit", function(e) {
+            let valid = true;
+            let firstInvalid = null;
+            inputs.forEach(input => {
+                if (!validate(input)) {
+                    valid = false;
+                    if (!firstInvalid) firstInvalid = input;
+                }
+            });
+            if (!valid) {
+                e.preventDefault();
+                if (firstInvalid) firstInvalid.focus();
+            }
+        });
+    });
+    </script>
 </div>
 
 <jsp:include page="includes/footer.jsp" />

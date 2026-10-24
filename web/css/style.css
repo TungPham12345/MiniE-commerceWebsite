@@ -1192,3 +1192,47 @@ body {
     background-color: #070a12 !important;
     border-top: 1px solid #1a2336;
 }
+
+/* ================== FORM VALIDATION & REQUIRED FIELDS ================== */
+.required-star, .text-danger {
+    color: #dc3545 !important;
+}
+
+.form-control.is-invalid, .form-select.is-invalid {
+    border-color: #dc3545 !important;
+    background-color: #fff8f8 !important;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.12) !important;
+}
+
+[data-bs-theme="dark"] .form-control.is-invalid,
+[data-bs-theme="dark"] .form-select.is-invalid {
+    border-color: #f43f5e !important;
+    background-color: #2a1520 !important;
+    box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2) !important;
+}
+
+.invalid-feedback {
+    display: none;
+    width: 100%;
+    margin-top: 0.35rem;
+    font-size: 0.84rem;
+    font-weight: 500;
+    color: #dc3545;
+    animation: fadeInError 0.2s ease-in-out;
+}
+
+[data-bs-theme="dark"] .invalid-feedback {
+    color: #fb7185;
+}
+
+@keyframes fadeInError {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+

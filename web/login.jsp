@@ -25,21 +25,23 @@
                     </div>
                 <% } %>
 
-                <form action="${pageContext.request.contextPath}/login" method="POST">
+                <form action="${pageContext.request.contextPath}/login" method="POST" id="loginForm" novalidate>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Tên đăng nhập</label>
+                        <label class="form-label fw-bold">Tên đăng nhập <span class="text-danger fw-bold">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
-                            <input type="text" name="username" class="form-control border-start-0 bg-light" placeholder="Nhập username" required value="customer1">
+                            <input type="text" name="username" class="form-control border-start-0 bg-light required-input" placeholder="Nhập username" required value="customer1">
                         </div>
+                        <div class="invalid-feedback"><i class="bi bi-exclamation-circle me-1"></i>Đây là trường bắt buộc</div>
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label fw-bold">Mật khẩu</label>
+                        <label class="form-label fw-bold">Mật khẩu <span class="text-danger fw-bold">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
-                            <input type="password" name="password" class="form-control border-start-0 bg-light" placeholder="Nhập mật khẩu" required value="123456">
+                            <input type="password" name="password" class="form-control border-start-0 bg-light required-input" placeholder="Nhập mật khẩu" required value="123456">
                         </div>
+                        <div class="invalid-feedback"><i class="bi bi-exclamation-circle me-1"></i>Đây là trường bắt buộc</div>
                     </div>
 
                     <button type="submit" class="btn btn-accent w-100 rounded-pill py-2.5 fw-bold mb-3">Đăng Nhập</button>
@@ -48,6 +50,36 @@
                         Chưa có tài khoản? <a href="${pageContext.request.contextPath}/register" class="text-danger fw-bold text-decoration-none">Đăng ký ngay</a>
                     </div>
                 </form>
+
+                <script>
+                document.addEventListener("DOMContentLoaded", function() {
+                    const form = document.getElementById("loginForm");
+                    if (!form) return;
+                    const inputs = form.querySelectorAll(".required-input");
+                    function validate(input) {
+                        const val = input.value.trim();
+                        const feedback = input.closest(".mb-3, .mb-4").querySelector(".invalid-feedback");
+                        if (!val) {
+                            input.classList.add("is-invalid");
+                            if (feedback) feedback.style.display = "block";
+                            return false;
+                        } else {
+                            input.classList.remove("is-invalid");
+                            if (feedback) feedback.style.display = "none";
+                            return true;
+                        }
+                    }
+                    inputs.forEach(input => {
+                        input.addEventListener("blur", function() { validate(this); });
+                        input.addEventListener("input", function() { if (this.classList.contains("is-invalid")) validate(this); });
+                    });
+                    form.addEventListener("submit", function(e) {
+                        let valid = true;
+                        inputs.forEach(input => { if (!validate(input)) valid = false; });
+                        if (!valid) e.preventDefault();
+                    });
+                });
+                </script>
 
                 <div class="mt-4 pt-3 border-top bg-light p-3 rounded-3 small">
                     <strong class="d-block mb-1 text-dark">🔑 Tài khoản Demo sẵn sàng test:</strong>
