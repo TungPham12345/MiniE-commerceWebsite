@@ -129,10 +129,10 @@ public class CheckoutController extends HttpServlet {
 
         // Khởi tạo đối tượng OrderDAO để lưu đơn hàng vào CSDL
         OrderDAO orderDAO = new OrderDAO();
-        boolean success = orderDAO.createOrder(order, orderDetails);
+        int orderId = orderDAO.createOrder(order, cart);
+        boolean success = orderId > 0;
 
         if (success) {
-            int orderId = order.getId();
             // Xóa sạch giỏ hàng trong Session sau khi đã đặt hàng thành công
             session.removeAttribute("cart");
             session.removeAttribute("cartTotal");

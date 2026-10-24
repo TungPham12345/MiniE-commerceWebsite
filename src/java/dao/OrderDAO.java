@@ -96,7 +96,7 @@ public class OrderDAO {
             System.err.println("⚠️ DB Order Creation failed, adding to mock orders: " + e.getMessage());
             order.setId(1000 + mockOrders.size() + 1);
             mockOrders.add(0, order);
-            return true;
+            return order.getId();
         } finally {
             // Đảm bảo bật lại auto-commit và đóng kết nối giải phóng tài nguyên
             if (conn != null) {
@@ -108,7 +108,6 @@ public class OrderDAO {
                 }
             }
         }
-        return 0;
     }
 
     private static final List<Order> mockOrders = new ArrayList<>();
