@@ -1,6 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="java.util.List, model.Product, model.Category, java.text.NumberFormat, java.util.Locale" %>
 <%
+    request.setAttribute("isHomePage", true);
     List<Product> products = (List<Product>) request.getAttribute("products");
     List<Product> featuredProducts = (List<Product>) request.getAttribute("featuredProducts");
     List<Category> categories = (List<Category>) request.getAttribute("categories");

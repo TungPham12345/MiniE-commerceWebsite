@@ -1,5 +1,14 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<!-- Chân trang (Footer) Hệ thống HighFashion -->
+<%
+    Boolean isHomePage = (Boolean) request.getAttribute("isHomePage");
+    if (isHomePage == null) {
+        String uri = request.getRequestURI();
+        isHomePage = uri != null && (uri.endsWith("/home") || uri.endsWith("/index.jsp") || uri.endsWith("/ban_hang/") || uri.endsWith("/ban_hang"));
+    }
+%>
+
+<% if (Boolean.TRUE.equals(isHomePage)) { %>
+<!-- Chân trang (Footer) Hệ thống HighFashion: Chỉ hiển thị ở Trang Chủ -->
 <footer class="bg-dark text-white pt-5 pb-4 mt-5">
     <div class="container">
         <div class="row g-4">
@@ -51,6 +60,7 @@
         </div>
     </div>
 </footer>
+<% } %>
 
 <!-- Thư viện Javascript Bootstrap 5 -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
