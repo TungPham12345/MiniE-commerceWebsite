@@ -35,7 +35,7 @@
         <div class="row g-5">
             <!-- Product Image -->
             <div class="col-lg-6">
-                <div class="overflow-hidden border bg-light">
+                <div class="border bg-white p-2 d-flex align-items-center justify-content-center shadow-sm rounded-1" style="min-height: 540px; height: 560px;">
                     <%
                         String prodImg = product.getImage();
                         if (prodImg != null && !prodImg.startsWith("http://") && !prodImg.startsWith("https://")) {
@@ -45,7 +45,7 @@
                         }
                     %>
                     <img src="<%= prodImg %>" alt="<%= product.getName() %>" 
-                         class="img-fluid w-100 object-fit-cover" style="max-height: 550px;"
+                         class="img-fluid w-100 h-100" style="max-height: 540px; object-fit: contain; object-position: center;"
                          onerror="this.src='https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600'">
                 </div>
             </div>

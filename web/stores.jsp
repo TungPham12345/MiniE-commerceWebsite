@@ -29,7 +29,9 @@
                     for (int i = 0; i < stores.size(); i++) {
                         Store s = stores.get(i);
                         String destAddress = s.getAddress();
-                        if (s.getCity() != null && !s.getCity().isEmpty() && !destAddress.toLowerCase().contains(s.getCity().toLowerCase())) {
+                        if (s.getId() == 3 || destAddress.contains("180 Cầu Giấy")) {
+                            destAddress = "180 Cầu Giấy, Hà Nội";
+                        } else if (s.getCity() != null && !s.getCity().isEmpty() && !destAddress.toLowerCase().contains(s.getCity().toLowerCase())) {
                             destAddress += ", " + s.getCity();
                         }
                         String mapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" + java.net.URLEncoder.encode(destAddress, "UTF-8");
@@ -103,7 +105,9 @@ document.addEventListener("DOMContentLoaded", function() {
         for (int i = 0; i < stores.size(); i++) {
             Store s = stores.get(i);
             String popupDest = s.getAddress();
-            if (s.getCity() != null && !s.getCity().isEmpty() && !popupDest.toLowerCase().contains(s.getCity().toLowerCase())) {
+            if (s.getId() == 3 || popupDest.contains("180 Cầu Giấy")) {
+                popupDest = "180 Cầu Giấy, Hà Nội";
+            } else if (s.getCity() != null && !s.getCity().isEmpty() && !popupDest.toLowerCase().contains(s.getCity().toLowerCase())) {
                 popupDest += ", " + s.getCity();
             }
             String popupMapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" + java.net.URLEncoder.encode(popupDest, "UTF-8");

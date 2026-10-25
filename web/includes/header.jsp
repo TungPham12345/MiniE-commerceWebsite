@@ -19,6 +19,53 @@
             }
         })();
     </script>
+    <!-- Tự động chuyển hướng về Trang chủ khi người dùng bấm Refresh (F5 / Reload) ở bất kỳ trang con nào -->
+    <script>
+        (function() {
+            try {
+                const navEntries = (window.performance && performance.getEntriesByType) ? performance.getEntriesByType('navigation') : null;
+                const isReload = (navEntries && navEntries.length > 0 && navEntries[0].type === 'reload') ||
+                                 (window.performance && window.performance.navigation && window.performance.navigation.type === 1);
+                
+                if (isReload) {
+                    const currentPath = window.location.pathname;
+                    const contextPath = '${pageContext.request.contextPath}';
+                    const homeUrl = contextPath + '/home';
+                    
+                    const isHomePage = currentPath === contextPath ||
+                                       currentPath === contextPath + '/' ||
+                                       currentPath === contextPath + '/home' ||
+                                       currentPath === contextPath + '/index.jsp';
+                    const isAdminPage = currentPath.includes('/admin');
+
+                    if (!isHomePage && !isAdminPage) {
+                        window.location.replace(homeUrl);
+                    }
+                }
+
+                // Lắng nghe phím tắt F5 hoặc Ctrl+R
+                window.addEventListener('keydown', function(e) {
+                    if (e.key === 'F5' || (e.ctrlKey && (e.key === 'r' || e.key === 'R'))) {
+                        const currentPath = window.location.pathname;
+                        const contextPath = '${pageContext.request.contextPath}';
+                        const homeUrl = contextPath + '/home';
+                        const isHomePage = currentPath === contextPath ||
+                                           currentPath === contextPath + '/' ||
+                                           currentPath === contextPath + '/home' ||
+                                           currentPath === contextPath + '/index.jsp';
+                        const isAdminPage = currentPath.includes('/admin');
+
+                        if (!isHomePage && !isAdminPage) {
+                            e.preventDefault();
+                            window.location.replace(homeUrl);
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Refresh redirect error:', e);
+            }
+        })();
+    </script>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->

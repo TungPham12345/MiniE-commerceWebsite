@@ -191,7 +191,9 @@ document.addEventListener("DOMContentLoaded", function() {
     <% if (stores != null && !stores.isEmpty()) { 
         for (Store s : stores) { 
             String popupDest = s.getAddress();
-            if (s.getCity() != null && !s.getCity().isEmpty() && !popupDest.toLowerCase().contains(s.getCity().toLowerCase())) {
+            if (s.getId() == 3 || popupDest.contains("180 Cầu Giấy")) {
+                popupDest = "180 Cầu Giấy, Hà Nội";
+            } else if (s.getCity() != null && !s.getCity().isEmpty() && !popupDest.toLowerCase().contains(s.getCity().toLowerCase())) {
                 popupDest += ", " + s.getCity();
             }
             String popupMapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" + java.net.URLEncoder.encode(popupDest, "UTF-8");

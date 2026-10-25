@@ -112,7 +112,7 @@ public class StoreDAO {
         List<Store> list = new ArrayList<>();
         list.add(new Store(1, "HighFashion Flagship Tràng Tiền", "24 Tràng Tiền, Phường Tràng Tiền, Quận Hoàn Kiếm", "Hà Nội", "0904 567 890", "08:30 - 22:00", 21.0253, 105.8544, true));
         list.add(new Store(2, "HighFashion Vincom Bà Triệu", "191 Bà Triệu, Phường Lê Đại Hành, Quận Hai Bà Trưng", "Hà Nội", "0902 888 999", "09:00 - 22:00", 21.0118, 105.8496, false));
-        list.add(new Store(3, "HighFashion Cầu Giấy Premium", "180 Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy", "Hà Nội", "0905 678 901", "08:30 - 22:00", 21.0335, 105.7958, false));
+        list.add(new Store(3, "HighFashion Cầu Giấy Premium", "180 Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy", "Hà Nội", "0905 678 901", "08:30 - 22:00", 21.0337, 105.7979, false));
         return list;
     }
 }
