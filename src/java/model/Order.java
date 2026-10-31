@@ -261,4 +261,110 @@ public class Order implements Serializable {
     public void setOrderDetails(List<OrderDetail> orderDetails) {
         this.orderDetails = orderDetails;
     }
+
+    /**
+     * Lấy định dạng tiền tệ Việt Nam (VNĐ)
+     * @return Chuỗi số tiền đã format (ví dụ: 1.030.000 đ)
+     */
+    public String getFormattedTotalMoney() {
+        return String.format("%,.0f đ", totalMoney).replace(',', '.');
+    }
+
+    /**
+     * Lấy tổng số lượng sản phẩm có trong đơn hàng
+     * @return Số lượng sản phẩm
+     */
+    public int getTotalItemCount() {
+        if (orderDetails == null || orderDetails.isEmpty()) {
+            return 1;
+        }
+        int total = 0;
+        for (OrderDetail d : orderDetails) {
+            total += d.getQuantity();
+        }
+        return total > 0 ? total : 1;
+    }
+
+    /**
+     * Lấy văn bản trạng thái hiển thị bằng Tiếng Việt
+     * @return Chuỗi trạng thái thân thiện với người dùng
+     */
+    public String getStatusVietnamese() {
+        if (status == null) return "Chờ giao hàng";
+        switch (status.toUpperCase()) {
+            case "DELIVERED":
+            case "COMPLETED":
+                return "Hoàn thành";
+            case "SHIPPING":
+                return "Vận chuyển";
+            case "PENDING":
+                return "Chờ giao hàng";
+            case "CONFIRMED":
+                return "Chờ giao hàng";
+            case "PROCESSING":
+                return "Chờ giao hàng";
+            case "UNPAID":
+                return "Chờ thanh toán";
+            case "CANCELLED":
+                return "Đã hủy";
+            case "REFUNDED":
+                return "Trả hàng/Hoàn tiền";
+            default:
+                return status;
+        }
+    }
+
+    /**
+     * Lấy biểu tượng Bootstrap Icon tương ứng với trạng thái
+     * @return Tên class icon Bootstrap
+     */
+    public String getStatusIcon() {
+        if (status == null) return "bi-clock-history";
+        switch (status.toUpperCase()) {
+            case "DELIVERED":
+            case "COMPLETED":
+                return "bi-check-circle-fill";
+            case "SHIPPING":
+                return "bi-truck";
+            case "PENDING":
+            case "CONFIRMED":
+            case "PROCESSING":
+                return "bi-hourglass-split";
+            case "UNPAID":
+                return "bi-credit-card-2-front";
+            case "CANCELLED":
+                return "bi-x-circle-fill";
+            case "REFUNDED":
+                return "bi-arrow-counterclockwise";
+            default:
+                return "bi-info-circle";
+        }
+    }
+
+    /**
+     * Lấy class màu sắc CSS tương ứng cho Badge trạng thái
+     * @return Class màu Bootstrap
+     */
+    public String getStatusBadgeClass() {
+        if (status == null) return "bg-warning-subtle text-warning-emphasis";
+        switch (status.toUpperCase()) {
+            case "DELIVERED":
+            case "COMPLETED":
+                return "bg-success-subtle text-success border border-success-subtle";
+            case "SHIPPING":
+                return "bg-primary-subtle text-primary border border-primary-subtle";
+            case "PENDING":
+            case "CONFIRMED":
+            case "PROCESSING":
+                return "bg-warning-subtle text-warning-emphasis border border-warning-subtle";
+            case "UNPAID":
+                return "bg-info-subtle text-info-emphasis border border-info-subtle";
+            case "CANCELLED":
+                return "bg-danger-subtle text-danger border border-danger-subtle";
+            case "REFUNDED":
+                return "bg-secondary-subtle text-secondary border border-secondary-subtle";
+            default:
+                return "bg-light text-dark border";
+        }
+    }
 }

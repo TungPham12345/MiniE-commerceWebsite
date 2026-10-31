@@ -10,6 +10,11 @@ import java.io.InputStreamReader;
 public class RunWebsite {
 
     public static void main(String[] args) {
+        try {
+            System.setOut(new java.io.PrintStream(System.out, true, "UTF-8"));
+            System.setErr(new java.io.PrintStream(System.err, true, "UTF-8"));
+        } catch (Exception ignored) {}
+
         System.out.println("========================================================");
         System.out.println("🚀 ĐANG KHỞI ĐỘNG WEBSITE BÁN HÀNG HIGHFASHION...");
         System.out.println("========================================================");
@@ -19,7 +24,7 @@ public class RunWebsite {
 
             if (scriptFile == null || !scriptFile.exists()) {
                 System.err.println("❌ Không tìm thấy file scripts/server.ps1!");
-                System.err.println("👉 Vui lòng đảm bảo thư mục dự án có chứa 'scripts/server.ps1'.");
+                System.err.println("👉 Vui lòng đảm bảo thư mục dự án có chứa 'ban_hang/scripts/server.ps1' hoặc 'scripts/server.ps1'.");
                 return;
             }
 
@@ -29,6 +34,11 @@ public class RunWebsite {
                 "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
                 "-File", scriptFile.getAbsolutePath(), "-Action", "start"
             );
+            // Thiết lập thư mục làm việc là thư mục chứa dự án ban_hang
+            File projectDir = scriptFile.getParentFile() != null ? scriptFile.getParentFile().getParentFile() : null;
+            if (projectDir != null && projectDir.exists()) {
+                pb.directory(projectDir);
+            }
             pb.redirectErrorStream(true);
             Process process = pb.start();
 
@@ -55,10 +65,12 @@ public class RunWebsite {
      */
     private static File findServerScript() {
         String[] relativePaths = {
-            "MiniE-commerceWebsite/scripts/server.ps1",
+            "ban_hang/scripts/server.ps1",
             "scripts/server.ps1",
-            "../MiniE-commerceWebsite/scripts/server.ps1",
-            "../scripts/server.ps1"
+            "../ban_hang/scripts/server.ps1",
+            "../scripts/server.ps1",
+            "MiniE-commerceWebsite/scripts/server.ps1",
+            "../MiniE-commerceWebsite/scripts/server.ps1"
         };
 
         for (String rel : relativePaths) {
@@ -68,13 +80,32 @@ public class RunWebsite {
             }
         }
 
-        // Dò ngược lên các thư mục cha từ thư mục làm việc hiện tại
+        // 1. Dò từ vị trí class đang chạy (RunWebsite.class)
+        try {
+            java.net.URL location = RunWebsite.class.getProtectionDomain().getCodeSource().getLocation();
+            if (location != null) {
+                File codeLoc = new File(location.toURI());
+                File dir = codeLoc.isDirectory() ? codeLoc : codeLoc.getParentFile();
+                for (int i = 0; i < 6 && dir != null; i++) {
+                    File s1 = new File(dir, "scripts/server.ps1");
+                    if (s1.exists()) return s1.getAbsoluteFile();
+                    File s2 = new File(dir, "ban_hang/scripts/server.ps1");
+                    if (s2.exists()) return s2.getAbsoluteFile();
+                    dir = dir.getParentFile();
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // 2. Dò ngược lên các thư mục cha từ thư mục làm việc hiện tại (user.dir)
         File current = new File(System.getProperty("user.dir"));
         for (int i = 0; i < 5 && current != null; i++) {
-            File test1 = new File(current, "MiniE-commerceWebsite/scripts/server.ps1");
+            File test0 = new File(current, "ban_hang/scripts/server.ps1");
+            if (test0.exists()) return test0.getAbsoluteFile();
+
+            File test1 = new File(current, "scripts/server.ps1");
             if (test1.exists()) return test1.getAbsoluteFile();
 
-            File test2 = new File(current, "scripts/server.ps1");
+            File test2 = new File(current, "MiniE-commerceWebsite/scripts/server.ps1");
             if (test2.exists()) return test2.getAbsoluteFile();
 
             current = current.getParentFile();

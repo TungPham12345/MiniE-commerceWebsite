@@ -3,6 +3,18 @@
 <%
     Product product = (Product) request.getAttribute("product");
     List<Product> relatedProducts = (List<Product>) request.getAttribute("relatedProducts");
+    if (product == null) {
+        String idParam = request.getParameter("id");
+        int pid = 1;
+        if (idParam != null && !idParam.isEmpty()) {
+            try { pid = Integer.parseInt(idParam); } catch (Exception e) { pid = 1; }
+        }
+        dao.ProductDAO pDao = new dao.ProductDAO();
+        product = pDao.getProductById(pid);
+        if (product != null) {
+            relatedProducts = pDao.getProductsByCategoryId(product.getCategoryId());
+        }
+    }
     NumberFormat fmt = NumberFormat.getInstance(new Locale("vi", "VN"));
     User currentUser = (User) session.getAttribute("user");
     
@@ -20,15 +32,90 @@
 <jsp:include page="includes/header.jsp" />
 <jsp:include page="includes/navbar.jsp" />
 
+<style>
+    /* Styling Nút Mũi Tên Quay Lại Cửa Hàng */
+    .back-to-store-btn {
+        transition: all 0.25s ease;
+        border-color: #cbd5e1;
+    }
+    .back-to-store-btn:hover {
+        background-color: var(--primary-color);
+        color: #ffffff;
+        transform: translateX(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+    }
+
+    /* Styling Toast Thông Báo Thêm Giỏ Hàng Nhỏ Gọn (Thay thế popup cũ) */
+    .cart-toast-alert {
+        position: fixed;
+        top: 85px;
+        right: 25px;
+        z-index: 10500;
+        background: var(--card-bg, #ffffff);
+        border: 1px solid var(--border-color, #e2e8f0);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        border-radius: 12px;
+        padding: 14px 18px;
+        min-width: 340px;
+        max-width: 460px;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateY(-20px) scale(0.95);
+        transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .cart-toast-alert.show-toast {
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        transform: translateY(0) scale(1) !important;
+    }
+    .toast-check-icon {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+
 <div class="container my-4">
-    <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="${pageContext.request.contextPath}/home" class="text-decoration-none">Trang chủ</a></li>
-            <li class="breadcrumb-item"><a href="${pageContext.request.contextPath}/products" class="text-decoration-none">Cửa hàng</a></li>
-            <li class="breadcrumb-item active"><%= product != null ? product.getName() : "" %></li>
-        </ol>
-    </nav>
+    <!-- Thanh Điều Hướng: Nút Mũi Tên Quay Lại Cửa Hàng & Breadcrumb -->
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <!-- Nút Mũi Tên Quay Lại Cửa Hàng Để Tiếp Tục Mua -->
+            <a href="${pageContext.request.contextPath}/products" 
+               class="btn btn-outline-dark rounded-pill px-3 py-1 btn-sm fw-semibold d-inline-flex align-items-center gap-2 shadow-sm back-to-store-btn" 
+               id="backToStoreBtn"
+               onclick="return handleBackToStore(event);"
+               title="Quay lại cửa hàng để tiếp tục mua sắm">
+                <i class="bi bi-arrow-left fs-6"></i>
+                <span>Quay lại cửa hàng</span>
+            </a>
+
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb m-0 small">
+                    <li class="breadcrumb-item"><a href="${pageContext.request.contextPath}/home" class="text-decoration-none text-muted">Trang chủ</a></li>
+                    <li class="breadcrumb-item"><a href="${pageContext.request.contextPath}/products" class="text-decoration-none text-muted">Cửa hàng</a></li>
+                    <li class="breadcrumb-item active text-dark fw-bold" aria-current="page"><%= product != null ? product.getName() : "" %></li>
+                </ol>
+            </nav>
+        </div>
+
+        <% if (currentUser == null || !currentUser.isAdmin()) { %>
+        <!-- Nút Xem Nhanh Giỏ Hàng cho Khách Mua Hàng -->
+        <a href="${pageContext.request.contextPath}/cart" class="btn btn-outline-danger rounded-pill px-3 py-1 btn-sm fw-semibold d-inline-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-bag-check-fill"></i>
+            <span>Xem giỏ hàng (<span class="detail-cart-count"><%= cartSize %></span>)</span>
+        </a>
+        <% } else { %>
+        <!-- Nút Quản Trị dành cho Admin -->
+        <a href="${pageContext.request.contextPath}/admin/dashboard" class="btn btn-danger rounded-pill px-3 py-1 btn-sm fw-bold d-inline-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-speedometer2"></i>
+            <span>Bảng Quản Trị Hệ Thống</span>
+        </a>
+        <% } %>
+    </div>
 
     <% if (product != null) { %>
     <div class="bg-white p-4 p-md-5 border mb-5">
@@ -101,7 +188,8 @@
                         <% } %>
                     </div>
 
-                    <!-- Quantity Stepper & 2 Lựa chọn: Thêm vào giỏ hàng trước & Mua ngay -->
+                    <% if (currentUser == null || !currentUser.isAdmin()) { %>
+                    <!-- Quantity Stepper & 2 Lựa chọn: Thêm vào giỏ hàng trước & Mua ngay cho Khách Hàng -->
                     <div class="d-flex flex-wrap align-items-center gap-3 mb-5">
                         <div class="quantity-stepper">
                             <button type="button" onclick="changeQty(-1)">-</button>
@@ -110,7 +198,7 @@
                         </div>
 
                         <!-- Lựa chọn 1: Thêm vào giỏ hàng trước -->
-                        <button type="button" class="btn-add-to-cart" onclick="submitToCart(false)">
+                        <button type="button" id="addToCartBtn" class="btn-add-to-cart" onclick="submitToCart(false)">
                             <i class="bi bi-cart-plus fs-5"></i> Thêm vào giỏ hàng
                         </button>
 
@@ -119,6 +207,29 @@
                             <i class="bi bi-lightning-charge-fill fs-5"></i> Mua ngay
                         </button>
                     </div>
+                    <% } else { %>
+                    <!-- Chế độ xem dành riêng cho Quản trị viên (Admin không thực hiện mua sắm cá nhân) -->
+                    <div class="alert alert-light border border-danger-subtle bg-danger-subtle bg-opacity-10 rounded-3 p-4 mb-5 shadow-sm">
+                        <div class="d-flex align-items-center gap-2 text-danger fw-bold fs-6 mb-2">
+                            <i class="bi bi-shield-lock-fill fs-5"></i>
+                            <span>CHẾ ĐỘ XEM QUẢN TRỊ VIÊN HỆ THỐNG</span>
+                        </div>
+                        <p class="small text-muted mb-3">
+                            Bạn đang xem sản phẩm với vai trò <strong>Quản Trị Viên</strong>. Tài khoản Admin không thực hiện mua hàng hay thêm vào giỏ hàng cá nhân.
+                        </p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a href="${pageContext.request.contextPath}/admin/dashboard" class="btn btn-danger btn-sm fw-bold px-3 py-2 rounded-pill shadow-sm">
+                                <i class="bi bi-speedometer2 me-1"></i> Bảng Quản Trị Đơn Hàng
+                            </a>
+                            <a href="${pageContext.request.contextPath}/admin/products" class="btn btn-outline-dark btn-sm fw-bold px-3 py-2 rounded-pill">
+                                <i class="bi bi-box-seam me-1"></i> Quản Lý Danh Mục & Sản Phẩm
+                            </a>
+                            <a href="${pageContext.request.contextPath}/admin/stores" class="btn btn-outline-danger btn-sm fw-bold px-3 py-2 rounded-pill">
+                                <i class="bi bi-geo-alt-fill me-1"></i> Quản Lý Cửa Hàng & Bản Đồ
+                            </a>
+                        </div>
+                    </div>
+                    <% } %>
                 </form>
 
                 <!-- Thanh Thông Tin Sản Phẩm Dạng Accordion (Tùy biến theo Áo Nam, Quần Nam, Nữ, Phụ Kiện) -->
@@ -304,65 +415,93 @@
     <% } %>
 </div>
 
-<!-- Modal Thông Báo Thêm Vào Giỏ Hang -->
-<% if (addedToCart != null && addedToCart && lastAddedItem != null) { 
-    session.removeAttribute("addedToCart");
-%>
-<div class="modal fade show d-block" id="cartSuccessModal" tabindex="-1" style="background: rgba(0,0,0,0.55);" onclick="if(event.target === this) closeCartModal();">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content rounded-0 border-0 shadow-lg overflow-hidden">
-            <div class="add-cart-header-bar bg-white d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-check-circle-fill text-success fs-5 me-2"></i>
-                    <strong>Bạn vừa thêm sản phẩm này vào giỏ hàng thành công!</strong>
-                </div>
-                <div class="d-flex align-items-center gap-3">
-                    <span class="text-secondary small">
-                        <i class="bi bi-bag-check me-1"></i>Giỏ hàng: <strong><%= cartSize %></strong> món
-                    </span>
-                    <button type="button" class="btn-close" aria-label="Đóng" onclick="closeCartModal()"></button>
-                </div>
+<!-- Toast Thông Báo Đã Thêm Vào Giỏ Hàng (Nhỏ gọn góc phải trên cùng, không che màn hình) -->
+<div id="cartToastNotification" class="cart-toast-alert" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex align-items-center gap-3">
+        <div class="toast-check-icon">
+            <i class="bi bi-check-circle-fill text-success fs-3"></i>
+        </div>
+        <div class="flex-grow-1">
+            <div class="fw-bold text-dark fs-6" id="cartToastTitle">Đã thêm vào giỏ hàng thành công!</div>
+            <div class="text-secondary small" id="cartToastDesc">
+                <% if (lastAddedItem != null) { %>
+                    <%= lastAddedItem.getProduct().getName() %> (Size: <%= lastAddedItem.getSize() %>, SL: <%= lastAddedItem.getQuantity() %>)
+                <% } else { %>
+                    Sản phẩm đã được lưu vào giỏ hàng của bạn.
+                <% } %>
             </div>
-            <div class="modal-body p-4 bg-white">
-                <div class="row align-items-center g-4">
-                    <div class="col-md-7">
-                        <div class="d-flex align-items-center gap-3">
-                            <%
-                                String lastImg = lastAddedItem.getProduct().getImage();
-                                if (lastImg != null && !lastImg.startsWith("http://") && !lastImg.startsWith("https://")) {
-                                    if (!lastImg.startsWith(request.getContextPath())) {
-                                        lastImg = request.getContextPath() + (lastImg.startsWith("/") ? "" : "/") + lastImg;
-                                    }
-                                }
-                            %>
-                            <img src="<%= lastImg %>" alt="<%= lastAddedItem.getProduct().getName() %>" style="width: 75px; height: 95px; object-fit: cover;" class="border">
-                            <div>
-                                <h6 class="fw-bold text-uppercase m-0 text-dark"><%= lastAddedItem.getProduct().getName() %></h6>
-                                <div class="text-secondary small mt-1">Size: <span class="badge bg-dark"><%= lastAddedItem.getSize() %></span> | Số lượng: <strong><%= lastAddedItem.getQuantity() %></strong></div>
-                                <div class="text-danger fw-bold fs-5 mt-1"><%= fmt.format(lastAddedItem.getProduct().getEffectivePrice()) %>đ</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-5 text-end">
-                        <div class="text-secondary small mb-1">Tạm tính giỏ hàng</div>
-                        <div class="fs-4 fw-extrabold text-danger mb-3"><%= fmt.format(cartTotal) %>đ</div>
-                        <div class="d-flex justify-content-end gap-2">
-                            <button type="button" class="btn btn-outline-secondary rounded-0 fw-bold px-3 py-2 text-uppercase small" onclick="closeCartModal()">
-                                Tiếp tục mua sắm
-                            </button>
-                            <a href="${pageContext.request.contextPath}/cart" class="btn-toi-gio-hang">
-                                <i class="bi bi-bag-check-fill me-1"></i> TỚI GIỎ HÀNG
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="${pageContext.request.contextPath}/cart" class="btn btn-danger btn-sm rounded-pill px-3 py-1 fw-bold text-nowrap">
+                Xem giỏ hàng
+            </a>
+            <button type="button" class="btn-close" onclick="hideCartToast()" aria-label="Close"></button>
         </div>
     </div>
 </div>
-<% } %>
 
 <script>
+function handleBackToStore(e) {
+    if (document.referrer && document.referrer.includes('/products')) {
+        e.preventDefault();
+        window.history.back();
+        return false;
+    }
+    return true;
+}
+
+let toastTimer = null;
+function showCartToast(prodName, size, qty, count) {
+    const toast = document.getElementById('cartToastNotification');
+    const desc = document.getElementById('cartToastDesc');
+    if (desc && prodName) {
+        desc.textContent = prodName + (size ? ' (Size: ' + size + ', SL: ' + (qty || 1) + ')' : '');
+    }
+    if (toast) {
+        toast.classList.add('show-toast');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(hideCartToast, 6000);
+
+        // Giữ thông báo khi rê chuột vào
+        toast.onmouseenter = function() {
+            if (toastTimer) clearTimeout(toastTimer);
+        };
+        toast.onmouseleave = function() {
+            toastTimer = setTimeout(hideCartToast, 3000);
+        };
+    }
+    if (count !== undefined) {
+        updateNavbarCartBadge(count);
+    }
+}
+
+function hideCartToast() {
+    const toast = document.getElementById('cartToastNotification');
+    if (toast) {
+        toast.classList.remove('show-toast');
+    }
+}
+
+function updateNavbarCartBadge(count) {
+    const badge = document.getElementById('navbarCartBadge');
+    if (badge) {
+        badge.textContent = count;
+        if (count > 0) {
+            badge.classList.remove('d-none');
+        } else {
+            badge.classList.add('d-none');
+        }
+        const icon = document.getElementById('navbarCartIcon');
+        if (icon) {
+            icon.style.transform = 'scale(1.25)';
+            icon.style.transition = 'transform 0.2s ease';
+            setTimeout(() => { icon.style.transform = 'scale(1)'; }, 250);
+        }
+    }
+    const detailCounts = document.querySelectorAll('.detail-cart-count');
+    detailCounts.forEach(el => el.textContent = count);
+}
+
 function selectSize(sz, element) {
     document.getElementById('selectedSizeInput').value = sz;
     var boxes = document.querySelectorAll('.size-box');
@@ -389,26 +528,73 @@ function submitToCart(isBuyNow) {
         window.location.href = '${pageContext.request.contextPath}/login?redirect=' + targetDetailUrl;
         return;
     <% } %>
+    
     var buyNowInput = document.getElementById('buyNowInput');
     if (buyNowInput) {
         buyNowInput.value = isBuyNow ? "true" : "false";
     }
-    document.getElementById('buyForm').submit();
+
+    if (isBuyNow) {
+        // Mua ngay -> Submit form trực tiếp chuyển sang checkout
+        document.getElementById('buyForm').submit();
+        return;
+    }
+
+    // Thêm vào giỏ hàng -> Gọi AJAX để không reload trang, không sinh thêm lịch sử trình duyệt, không hiện popup to
+    const form = document.getElementById('buyForm');
+    const btnAdd = document.querySelector('.btn-add-to-cart');
+    const originalBtnHtml = btnAdd ? btnAdd.innerHTML : '';
+    if (btnAdd) {
+        btnAdd.disabled = true;
+        btnAdd.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang thêm...';
+    }
+
+    const formData = new FormData(form);
+    formData.append('ajax', 'true');
+
+    fetch(form.action, {
+        method: 'POST',
+        body: new URLSearchParams(formData),
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (btnAdd) {
+            btnAdd.disabled = false;
+            btnAdd.innerHTML = '<i class="bi bi-check2 me-1"></i> Đã thêm vào giỏ!';
+            setTimeout(() => {
+                btnAdd.innerHTML = originalBtnHtml;
+            }, 1800);
+        }
+
+        if (data.requireLogin && data.redirectUrl) {
+            window.location.href = data.redirectUrl;
+            return;
+        }
+
+        if (data.success) {
+            showCartToast(data.productName, data.size, data.quantity, data.cartSize);
+        }
+    })
+    .catch(err => {
+        console.error('AJAX add to cart fallback:', err);
+        if (btnAdd) {
+            btnAdd.disabled = false;
+            btnAdd.innerHTML = originalBtnHtml;
+        }
+        form.submit();
+    });
 }
 
-function closeCartModal() {
-    var modal = document.getElementById('cartSuccessModal');
-    if (modal) {
-        modal.classList.remove('show', 'd-block');
-        modal.style.display = 'none';
-    }
-}
-
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeCartModal();
-    }
+<% if (addedToCart != null && addedToCart) { 
+    session.removeAttribute("addedToCart");
+%>
+document.addEventListener('DOMContentLoaded', function() {
+    showCartToast('<%= lastAddedItem != null ? lastAddedItem.getProduct().getName() : "Sản phẩm" %>', '<%= lastAddedItem != null ? lastAddedItem.getSize() : "" %>', <%= lastAddedItem != null ? lastAddedItem.getQuantity() : 1 %>, <%= cartSize %>);
 });
+<% } %>
 </script>
 
 <jsp:include page="includes/footer.jsp" />

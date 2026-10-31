@@ -19,14 +19,21 @@
             }
         })();
     </script>
-    <!-- Tự động chuyển hướng về Trang chủ khi người dùng bấm Refresh (F5 / Reload) ở bất kỳ trang con nào -->
+    <!-- Tự động chuyển hướng về Trang chủ khi người dùng bấm Refresh (F5 / Reload) ở bất kỳ trang con nào, nhưng KHÔNG chặn nút Back/Forward -->
     <script>
         (function() {
             try {
                 const navEntries = (window.performance && performance.getEntriesByType) ? performance.getEntriesByType('navigation') : null;
-                const isReload = (navEntries && navEntries.length > 0 && navEntries[0].type === 'reload') ||
-                                 (window.performance && window.performance.navigation && window.performance.navigation.type === 1);
+                const navType = (navEntries && navEntries.length > 0) ? navEntries[0].type : '';
+                const legacyType = (window.performance && window.performance.navigation) ? window.performance.navigation.type : -1;
                 
+                // Kiểm tra nếu là thao tác bấm nút Quay Lại (Back) hoặc Tiến (Forward) của trình duyệt
+                const isBackForward = navType === 'back_forward' || legacyType === 2;
+                if (isBackForward) {
+                    return; // Cho phép quay lại trang trước để tiếp tục mua sắm
+                }
+
+                const isReload = (navType === 'reload') || (legacyType === 1);
                 if (isReload) {
                     const currentPath = window.location.pathname;
                     const contextPath = '${pageContext.request.contextPath}';

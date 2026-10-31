@@ -1,6 +1,13 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="java.util.List, model.CartItem, java.text.NumberFormat, java.util.Locale" %>
+<%@ page import="java.util.List, model.CartItem, model.User, java.text.NumberFormat, java.util.Locale" %>
 <%
+    User sessionUser = (User) session.getAttribute("user");
+    if (sessionUser != null && (sessionUser.isAdmin() || sessionUser.getRole() == 1)) {
+        session.setAttribute("toastInfo", "Tài khoản Quản Trị Viên không sử dụng giỏ hàng mua sắm.");
+        response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+        return;
+    }
+
     List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
     Double cartTotalObj = (Double) session.getAttribute("cartTotal");
     double cartTotal = cartTotalObj != null ? cartTotalObj : 0;

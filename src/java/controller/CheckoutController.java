@@ -49,6 +49,13 @@ public class CheckoutController extends HttpServlet {
             return;
         }
 
+        // Quyền hạn: Tài khoản Quản trị viên (Admin) không thực hiện mua sắm hay đặt hàng
+        if (user.isAdmin() || user.getRole() == 1) {
+            session.setAttribute("toastInfo", "Tài khoản Quản Trị Viên không thực hiện đặt mua hàng.");
+            response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+            return;
+        }
+
         // Lấy danh sách các món hàng trong giỏ
         List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
 
@@ -91,6 +98,13 @@ public class CheckoutController extends HttpServlet {
             session.setAttribute("redirectAfterLogin", request.getContextPath() + "/checkout");
             session.setAttribute("errorMessage", "⚠️ Bạn chưa đăng nhập! Vui lòng đăng nhập trước khi xác nhận đặt hàng.");
             response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+
+        // Quyền hạn: Tài khoản Quản trị viên (Admin) không thực hiện mua sắm hay đặt hàng
+        if (user.isAdmin() || user.getRole() == 1) {
+            session.setAttribute("toastInfo", "Tài khoản Quản Trị Viên không thực hiện đặt mua hàng.");
+            response.sendRedirect(request.getContextPath() + "/admin/dashboard");
             return;
         }
 

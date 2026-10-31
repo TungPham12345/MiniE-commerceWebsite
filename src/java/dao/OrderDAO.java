@@ -111,22 +111,9 @@ public class OrderDAO {
     }
 
     private static final List<Order> mockOrders = new ArrayList<>();
-    static {
-        mockOrders.add(new Order(1001, 1, "Nguyễn Văn An", "an.nguyen@gmail.com", "0912345678",
-                "123 Nguyễn Trãi, Quận 5, TP.HCM", "Giao trong giờ hành chính", 1030000.0, "COD", "PENDING",
-                new java.sql.Timestamp(System.currentTimeMillis() - 3600000)));
-        mockOrders.add(new Order(1002, 2, "Trần Thị Mai", "mai.tran@gmail.com", "0988776655", "456 Cầu Giấy, Hà Nội",
-                "Gọi trước khi giao", 580000.0, "COD", "DELIVERED",
-                new java.sql.Timestamp(System.currentTimeMillis() - 7200000)));
-        mockOrders.add(new Order(1003, null, "Lê Hoàng Long", "long.le@yahoo.com", "0901234567",
-                "88 Nguyễn Văn Linh, Đà Nẵng", "Đóng gói cẩn thận", 1450000.0, "COD", "PENDING",
-                new java.sql.Timestamp(System.currentTimeMillis() - 86400000)));
-    }
 
     /**
-     * Lấy toàn bộ danh sách đơn hàng để hiển thị cho trang quản trị (Admin
-     * Dashboard)
-     * 
+     * Lấy toàn bộ danh sách đơn hàng để hiển thị cho trang quản trị (Admin Dashboard)
      * @return Danh sách các đơn hàng trong hệ thống
      */
     public List<Order> getAllOrders() {
@@ -153,20 +140,64 @@ public class OrderDAO {
                 list.add(o);
             }
         } catch (Exception e) {
-            System.err.println("⚠️ DB Query orders failed, loading Mock Orders: " + e.getMessage());
+            System.err.println("⚠️ DB Query orders failed: " + e.getMessage());
         }
 
-        // Nếu database chưa có đơn hàng nào hoặc lỗi kết nối, trả về danh sách mẫu
-        if (list.isEmpty()) {
-            return new ArrayList<>(mockOrders);
+        // Nạp chi tiết sản phẩm cho từng đơn hàng
+        for (Order o : list) {
+            o.setOrderDetails(getOrderDetailsByOrderId(o.getId()));
         }
+
         return list;
     }
 
     /**
-     * Cập nhật trạng thái đơn hàng (Ví dụ: PENDING -> CONFIRMED -> SHIPPING ->
-     * DELIVERED -> CANCELLED)
-     * 
+     * Lấy danh sách chi tiết các sản phẩm trong một đơn hàng
+     * @param orderId Mã đơn hàng cần tra cứu
+     * @return Danh sách chi tiết sản phẩm
+     */
+    public List<OrderDetail> getOrderDetailsByOrderId(int orderId) {
+        List<OrderDetail> details = new ArrayList<>();
+        String sql = "SELECT od.*, p.name AS product_name, p.image AS product_image " +
+                     "FROM order_details od " +
+                     "LEFT JOIN products p ON od.product_id = p.id " +
+                     "WHERE od.order_id = ?";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    OrderDetail d = new OrderDetail(
+                        rs.getInt("id"),
+                        rs.getInt("order_id"),
+                        rs.getInt("product_id"),
+                        rs.getDouble("price"),
+                        rs.getInt("quantity"),
+                        rs.getString("size"),
+                        rs.getString("color"),
+                        rs.getDouble("total_money")
+                    );
+                    d.setProductName(rs.getString("product_name"));
+                    d.setProductImage(rs.getString("product_image"));
+                    details.add(d);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ DB Query order details failed: " + e.getMessage());
+        }
+
+        if (details.isEmpty()) {
+            for (Order o : mockOrders) {
+                if (o.getId() == orderId && o.getOrderDetails() != null) {
+                    return o.getOrderDetails();
+                }
+            }
+        }
+        return details;
+    }
+
+    /**
+     * Cập nhật trạng thái đơn hàng (Ví dụ: PENDING -> CONFIRMED -> SHIPPING -> DELIVERED -> CANCELLED)
      * @param orderId Mã đơn hàng cần cập nhật
      * @param status  Trạng thái mới cần áp dụng
      * @return true nếu cập nhật thành công, ngược lại false
@@ -177,12 +208,22 @@ public class OrderDAO {
                 PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, status); // Thiết lập trạng thái mới
             ps.setInt(2, orderId); // Điều kiện mã đơn hàng
-            return ps.executeUpdate() > 0;
+            int affected = ps.executeUpdate();
+            if (affected > 0) {
+                // Đồng thời cập nhật trạng thái trong mockOrders nếu có
+                for (Order o : mockOrders) {
+                    if (o.getId() == orderId) {
+                        o.setStatus(status);
+                        break;
+                    }
+                }
+                return true;
+            }
         } catch (Exception e) {
-            System.err.println("⚠️ DB update order status failed, updating Mock Orders: " + e.getMessage());
+            System.err.println("⚠️ DB update order status failed: " + e.getMessage());
         }
 
-        // Nếu cập nhật database thất bại, cập nhật trạng thái trong danh sách mẫu
+        // Nếu cập nhật database không tìm thấy dòng (hoặc lỗi kết nối), cập nhật trong danh sách mẫu
         for (Order o : mockOrders) {
             if (o.getId() == orderId) {
                 o.setStatus(status);
@@ -190,5 +231,206 @@ public class OrderDAO {
             }
         }
         return false;
+    }
+
+    /**
+     * Lấy danh sách đơn hàng đã mua của người dùng cụ thể
+     * @param userId Mã định danh tài khoản khách hàng
+     * @return Danh sách đơn hàng sắp xếp theo thời gian mới nhất
+     */
+    public List<Order> getOrdersByUserId(int userId) {
+        List<Order> list = new ArrayList<>();
+        String sql = "SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Order o = new Order(
+                        rs.getInt("id"),
+                        (Integer) rs.getObject("user_id"),
+                        rs.getString("customer_name"),
+                        rs.getString("email"),
+                        rs.getString("phone"),
+                        rs.getString("address"),
+                        rs.getString("note"),
+                        rs.getDouble("total_money"),
+                        rs.getString("payment_method"),
+                        rs.getString("status"),
+                        rs.getTimestamp("created_at")
+                    );
+                    list.add(o);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ DB Query user orders failed: " + e.getMessage());
+        }
+
+        // Nạp chi tiết sản phẩm cho từng đơn hàng
+        for (Order o : list) {
+            o.setOrderDetails(getOrderDetailsByOrderId(o.getId()));
+        }
+
+        return list;
+    }
+
+    /**
+     * Lấy thông tin một đơn hàng theo mã ID
+     * @param orderId Mã đơn hàng
+     * @return Đối tượng Order hoặc null
+     */
+    public Order getOrderById(int orderId) {
+        String sql = "SELECT * FROM orders WHERE id = ?";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Order o = new Order(
+                        rs.getInt("id"),
+                        (Integer) rs.getObject("user_id"),
+                        rs.getString("customer_name"),
+                        rs.getString("email"),
+                        rs.getString("phone"),
+                        rs.getString("address"),
+                        rs.getString("note"),
+                        rs.getDouble("total_money"),
+                        rs.getString("payment_method"),
+                        rs.getString("status"),
+                        rs.getTimestamp("created_at")
+                    );
+                    o.setOrderDetails(getOrderDetailsByOrderId(o.getId()));
+                    return o;
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ DB getOrderById failed: " + e.getMessage());
+        }
+
+        for (Order o : mockOrders) {
+            if (o.getId() == orderId) {
+                if (o.getOrderDetails() == null || o.getOrderDetails().isEmpty()) {
+                    o.setOrderDetails(getOrderDetailsByOrderId(orderId));
+                }
+                return o;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Khách hàng tự hủy đơn hàng (chỉ cho phép khi trạng thái là PENDING hoặc UNPAID)
+     * @param orderId Mã đơn hàng
+     * @param userId  Mã tài khoản người đặt hàng
+     * @return true nếu hủy thành công
+     */
+    public boolean cancelOrder(int orderId, int userId) {
+        Order o = getOrderById(orderId);
+        if (o == null) {
+            return false;
+        }
+        // Kiểm tra xem đơn hàng có thuộc về tài khoản này không (hoặc tài khoản là quản trị viên)
+        if (o.getUserId() != null && o.getUserId() != userId) {
+            return false;
+        }
+        // Chỉ cho phép hủy khi đơn còn ở trạng thái PENDING hoặc UNPAID
+        String currentStatus = o.getStatus() != null ? o.getStatus().toUpperCase() : "";
+        if ("PENDING".equals(currentStatus) || "UNPAID".equals(currentStatus) || "CHO_XU_LY".equals(currentStatus)) {
+            return updateOrderStatus(orderId, "CANCELLED");
+        }
+        return false;
+    }
+
+    /**
+     * Khách hàng xác nhận đã nhận hàng (chuyển từ SHIPPING sang DELIVERED)
+     * @param orderId Mã đơn hàng
+     * @param userId  Mã tài khoản người đặt hàng
+     * @return true nếu xác nhận thành công
+     */
+    public boolean confirmReceived(int orderId, int userId) {
+        Order o = getOrderById(orderId);
+        if (o == null) {
+            return false;
+        }
+        if (o.getUserId() != null && o.getUserId() != userId) {
+            return false;
+        }
+        String currentStatus = o.getStatus() != null ? o.getStatus().toUpperCase() : "";
+        if ("SHIPPING".equals(currentStatus) || "VAN_CHUYEN".equals(currentStatus)) {
+            return updateOrderStatus(orderId, "DELIVERED");
+        }
+        return false;
+    }
+
+    /**
+     * Xóa một đơn hàng và toàn bộ chi tiết đơn hàng tương ứng
+     * @param orderId Mã đơn hàng cần xóa
+     * @return true nếu xóa thành công
+     */
+    public boolean deleteOrder(int orderId) {
+        String sqlDetails = "DELETE FROM order_details WHERE order_id = ?";
+        String sqlOrder = "DELETE FROM orders WHERE id = ?";
+        Connection conn = null;
+        try {
+            conn = DBContext.getConnection();
+            conn.setAutoCommit(false);
+            try (PreparedStatement psDetails = conn.prepareStatement(sqlDetails)) {
+                psDetails.setInt(1, orderId);
+                psDetails.executeUpdate();
+            }
+            try (PreparedStatement psOrder = conn.prepareStatement(sqlOrder)) {
+                psOrder.setInt(1, orderId);
+                int affected = psOrder.executeUpdate();
+                conn.commit();
+                mockOrders.removeIf(o -> o.getId() == orderId);
+                return affected > 0;
+            }
+        } catch (Exception e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (Exception ex) {}
+            }
+            System.err.println("⚠️ Delete order failed: " + e.getMessage());
+            mockOrders.removeIf(o -> o.getId() == orderId);
+            return false;
+        } finally {
+            if (conn != null) {
+                try { conn.setAutoCommit(true); conn.close(); } catch (Exception ex) {}
+            }
+        }
+    }
+
+    /**
+     * Xóa toàn bộ đơn hàng trong hệ thống (Sạch dữ liệu đơn hàng)
+     * @return true nếu xóa thành công
+     */
+    public boolean deleteAllOrders() {
+        String sqlDetails = "DELETE FROM order_details";
+        String sqlOrders = "DELETE FROM orders";
+        Connection conn = null;
+        try {
+            conn = DBContext.getConnection();
+            conn.setAutoCommit(false);
+            try (Statement st = conn.createStatement()) {
+                st.executeUpdate(sqlDetails);
+                st.executeUpdate(sqlOrders);
+                try {
+                    st.executeUpdate("DBCC CHECKIDENT ('orders', RESEED, 1000)");
+                } catch (Exception ignore) {}
+            }
+            conn.commit();
+            mockOrders.clear();
+            return true;
+        } catch (Exception e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (Exception ex) {}
+            }
+            System.err.println("⚠️ Delete all orders failed: " + e.getMessage());
+            mockOrders.clear();
+            return false;
+        } finally {
+            if (conn != null) {
+                try { conn.setAutoCommit(true); conn.close(); } catch (Exception ex) {}
+            }
+        }
     }
 }

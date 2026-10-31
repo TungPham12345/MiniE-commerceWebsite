@@ -26,7 +26,8 @@
                     </ul>
                 </div>
 
-                <div class="d-flex justify-content-center gap-3">
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <a href="${pageContext.request.contextPath}/my-orders" class="btn btn-outline-danger rounded-pill px-4 py-2 fw-bold"><i class="bi bi-box-seam me-1"></i> Xem Đơn Mua Của Bạn</a>
                     <a href="${pageContext.request.contextPath}/home" class="btn btn-outline-dark rounded-pill px-4 py-2 fw-bold">Về Trang Chủ</a>
                     <a href="${pageContext.request.contextPath}/products" class="btn btn-accent rounded-pill px-4 py-2 fw-bold">Tiếp Tục Mua Sắm</a>
                 </div>

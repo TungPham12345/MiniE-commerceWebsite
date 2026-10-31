@@ -24,7 +24,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * Hiển thị thông tin chi tiết một sản phẩm, tùy chọn size, màu và các sản phẩm tương tự
  * Annotation @WebServlet ánh xạ URL "/product-detail" tới Servlet này
  */
-@WebServlet(name = "ProductDetailController", urlPatterns = {"/product-detail"})
+@WebServlet(name = "ProductDetailController", urlPatterns = {"/product-detail", "/detail"})
 public class ProductDetailController extends HttpServlet {
 
     /**

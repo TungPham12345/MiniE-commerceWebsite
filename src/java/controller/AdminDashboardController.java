@@ -54,15 +54,57 @@ public class AdminDashboardController extends HttpServlet {
         String action = request.getParameter("action");
         if ("updateStatus".equals(action)) {
             String orderIdRaw = request.getParameter("orderId"); // Mã đơn hàng cần cập nhật
-            String newStatus = request.getParameter("status");   // Trạng thái mới (ví dụ: 'DELIVERED')
+            String newStatus = request.getParameter("status");   // Trạng thái mới (ví dụ: 'DELIVERED', 'CONFIRMED', 'CANCELLED')
             if (orderIdRaw != null && newStatus != null) {
                 try {
                     int orderId = Integer.parseInt(orderIdRaw);
+                    newStatus = newStatus.trim().toUpperCase();
                     // Gọi hàm cập nhật trạng thái đơn hàng trong DAO
-                    orderDAO.updateOrderStatus(orderId, newStatus);
-                } catch (Exception ignored) {}
+                    boolean success = orderDAO.updateOrderStatus(orderId, newStatus);
+                    if (success) {
+                        String msg = "Cập nhật đơn hàng #" + orderId + " thành công!";
+                        if ("DELIVERED".equals(newStatus) || "CONFIRMED".equals(newStatus)) {
+                            msg = "🎉 Duyệt thành công đơn hàng #" + orderId + "!";
+                        } else if ("CANCELLED".equals(newStatus)) {
+                            msg = "❌ Đã hủy đơn hàng #" + orderId + "!";
+                        } else if ("PENDING".equals(newStatus)) {
+                            msg = "🔄 Đã khôi phục đơn hàng #" + orderId + " về trạng thái Chờ xử lý!";
+                        }
+                        session.setAttribute("toastSuccess", msg);
+                    } else {
+                        session.setAttribute("toastError", "Không tìm thấy hoặc không thể cập nhật đơn hàng #" + orderId);
+                    }
+                } catch (Exception e) {
+                    session.setAttribute("toastError", "Lỗi dữ liệu đơn hàng: " + e.getMessage());
+                }
             }
             // Sau khi cập nhật xong, chuyển hướng tải lại trang dashboard để làm mới số liệu
+            response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+            return;
+        } else if ("delete".equals(action)) {
+            String orderIdRaw = request.getParameter("orderId");
+            if (orderIdRaw != null) {
+                try {
+                    int orderId = Integer.parseInt(orderIdRaw);
+                    boolean success = orderDAO.deleteOrder(orderId);
+                    if (success) {
+                        session.setAttribute("toastSuccess", "🗑️ Đã xóa vĩnh viễn đơn hàng #" + orderId + " thành công!");
+                    } else {
+                        session.setAttribute("toastError", "Không thể xóa đơn hàng #" + orderId);
+                    }
+                } catch (Exception e) {
+                    session.setAttribute("toastError", "Lỗi xóa đơn hàng: " + e.getMessage());
+                }
+            }
+            response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+            return;
+        } else if ("deleteAll".equals(action)) {
+            boolean success = orderDAO.deleteAllOrders();
+            if (success) {
+                session.setAttribute("toastSuccess", "🧹 Đã xóa sạch toàn bộ đơn hàng trong hệ thống!");
+            } else {
+                session.setAttribute("toastError", "Lỗi khi xóa toàn bộ đơn hàng!");
+            }
             response.sendRedirect(request.getContextPath() + "/admin/dashboard");
             return;
         }
@@ -76,7 +118,10 @@ public class AdminDashboardController extends HttpServlet {
 
         // Duyệt qua từng đơn hàng để tính toán tổng doanh thu và đếm đơn chờ xử lý
         for (Order o : orders) {
-            totalRevenue += o.getTotalMoney(); // Cộng dồn tiền đơn hàng
+            // Không tính các đơn đã bị hủy vào doanh thu
+            if (!"CANCELLED".equalsIgnoreCase(o.getStatus())) {
+                totalRevenue += o.getTotalMoney(); // Cộng dồn tiền đơn hàng
+            }
             if ("PENDING".equalsIgnoreCase(o.getStatus())) {
                 pendingOrdersCount++;          // Tăng biến đếm đơn chờ xử lý
             }
@@ -94,5 +139,14 @@ public class AdminDashboardController extends HttpServlet {
 
         // Chuyển tiếp tới trang giao diện quản trị admin-dashboard.jsp
         request.getRequestDispatcher("/admin-dashboard.jsp").forward(request, response);
+    }
+
+    /**
+     * Phương thức doPost: Chuyển tiếp sang doGet để xử lý các form gửi trạng thái
+     */
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        doGet(request, response);
     }
 }

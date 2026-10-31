@@ -157,3 +157,7 @@ INSERT INTO products (name, description, price, sale_price, quantity, image, siz
 (N'Túi Du Lịch Canvas Unisex Vintage', N'Túi xách du lịch cỡ lớn vải canvas phối da mộc bụi bặm.', 1250000, 0, 25, 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600', 'Freesize', N'Xanh Lá, Be, Nâu', 4, 0),
 (N'Bộ Trang Sức Vòng Cổ Bạc Đính Đá', N'Bộ dây chuyền và bông tai bạc 925 đính đá pha sáng lấp lánh.', 7200000, 0, 10, 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600', 'One Size', N'Trắng, Tím, Vàng', 4, 1);
 GO
+
+-- Note: Bang orders va order_details mac dinh de trong de khach hang tu dat hang tren he thong.
+
+

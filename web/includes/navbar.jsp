@@ -60,15 +60,20 @@
                     <i class="bi bi-sun-fill theme-icon-sun"></i>
                 </button>
 
-                <!-- Biểu Tượng Giỏ Hàng Có Huy Hiệu Số Lượng -->
-                <a href="${pageContext.request.contextPath}/cart" class="position-relative nav-action-link fs-5 p-1" title="Xem giỏ hàng">
-                    <i class="bi bi-bag"></i>
-                    <% if (cartCount > 0) { %>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+                <% if (currentUser != null && (currentUser.isAdmin() || currentUser.getRole() == 1)) { %>
+                    <!-- Biểu Tượng Bảng Quản Trị Dành Riêng Cho Admin (Admin không sử dụng giỏ hàng) -->
+                    <a href="${pageContext.request.contextPath}/admin/dashboard" class="position-relative nav-action-link fs-5 p-1 text-danger" title="Bảng Quản Trị Hệ Thống" id="navbarAdminIcon">
+                        <i class="bi bi-speedometer2"></i>
+                    </a>
+                <% } else { %>
+                    <!-- Biểu Tượng Giỏ Hàng Có Huy Hiệu Số Lượng (Dành Cho Khách Hàng Mua Sắm) -->
+                    <a href="${pageContext.request.contextPath}/cart" class="position-relative nav-action-link fs-5 p-1" title="Xem giỏ hàng" id="navbarCartIcon">
+                        <i class="bi bi-bag"></i>
+                        <span id="navbarCartBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger <%= cartCount > 0 ? "" : "d-none" %>" style="font-size: 0.65rem;">
                             <%= cartCount %>
                         </span>
-                    <% } %>
-                </a>
+                    </a>
+                <% } %>
 
                 <% if (currentUser == null) { %>
                     <!-- Khách chưa đăng nhập: Nút Đăng nhập và Đăng ký -->
@@ -80,15 +85,34 @@
                         <button class="btn btn-light rounded-pill dropdown-toggle fw-bold btn-sm border" type="button" data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle me-1 text-danger"></i> <%= currentUser.getFullname() %>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2">
-                            <% if (currentUser.getRole() == 1) { %>
-                                <!-- Menu dành riêng cho Quản trị viên (Admin) -->
-                                <li><a class="dropdown-menu-item text-danger fw-bold dropdown-item" href="${pageContext.request.contextPath}/admin/dashboard"><i class="bi bi-speedometer2 me-2"></i> Trang Admin</a></li>
-                                <li><a class="dropdown-menu-item text-danger fw-bold dropdown-item" href="${pageContext.request.contextPath}/admin/stores"><i class="bi bi-geo-alt-fill me-2"></i> Quản Lý Bản Đồ</a></li>
-                                <li><hr class="dropdown-divider"></li>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 py-2" style="min-width: 230px;">
+                            <% if (currentUser.getRole() == 1 || currentUser.isAdmin()) { %>
+                                <!-- Header Vai trò Quản trị viên -->
+                                <li class="px-3 py-2 border-bottom mb-1 bg-light">
+                                    <div class="d-flex align-items-center gap-1 text-danger fw-bold small">
+                                        <i class="bi bi-shield-lock-fill"></i> QUẢN TRỊ VIÊN
+                                    </div>
+                                    <div class="text-muted small text-truncate"><%= currentUser.getEmail() != null ? currentUser.getEmail() : currentUser.getUsername() %></div>
+                                </li>
+                                <!-- Các mục Quản trị Admin CẦN CÓ (Admin KHÔNG CÓ Đơn mua) -->
+                                <li><a class="dropdown-item fw-bold text-danger py-2" href="${pageContext.request.contextPath}/admin/dashboard"><i class="bi bi-speedometer2 me-2"></i> Bảng Quản Trị Hệ Thống</a></li>
+                                <li><a class="dropdown-item fw-semibold text-dark py-2" href="${pageContext.request.contextPath}/admin/products"><i class="bi bi-box-seam me-2 text-danger"></i> Quản Lý Sản Phẩm</a></li>
+                                <li><a class="dropdown-item fw-semibold text-dark py-2" href="${pageContext.request.contextPath}/admin/stores"><i class="bi bi-geo-alt-fill me-2 text-danger"></i> Quản Lý Bản Đồ</a></li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                            <% } else { %>
+                                <!-- Header Vai trò Khách hàng -->
+                                <li class="px-3 py-2 border-bottom mb-1 bg-light">
+                                    <div class="d-flex align-items-center gap-1 text-primary fw-bold small">
+                                        <i class="bi bi-person-fill"></i> KHÁCH HÀNG
+                                    </div>
+                                    <div class="text-muted small text-truncate"><%= currentUser.getEmail() != null ? currentUser.getEmail() : currentUser.getUsername() %></div>
+                                </li>
+                                <!-- Menu Đơn Mua chỉ dành riêng cho Khách hàng -->
+                                <li><a class="dropdown-item fw-semibold py-2" href="${pageContext.request.contextPath}/my-orders"><i class="bi bi-bag-check-fill me-2 text-danger"></i> Đơn mua của tôi</a></li>
+                                <li><hr class="dropdown-divider my-1"></li>
                             <% } %>
                             <!-- Đăng xuất tài khoản -->
-                            <li><a class="dropdown-item text-danger" href="${pageContext.request.contextPath}/logout"><i class="bi bi-box-arrow-right me-2"></i> Đăng xuất</a></li>
+                            <li><a class="dropdown-item text-danger py-2" href="${pageContext.request.contextPath}/logout"><i class="bi bi-box-arrow-right me-2"></i> Đăng xuất</a></li>
                         </ul>
                     </div>
                 <% } %>

@@ -47,6 +47,13 @@ public class CartController extends HttpServlet {
             return;
         }
 
+        // Quyền hạn: Tài khoản Quản trị viên (Admin) không sử dụng giỏ hàng mua sắm
+        if (user.isAdmin() || user.getRole() == 1) {
+            session.setAttribute("toastInfo", "Tài khoản Quản Trị Viên không sử dụng giỏ hàng mua sắm.");
+            response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+            return;
+        }
+
         List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
         if (cart == null) {
             cart = new ArrayList<>();
@@ -89,6 +96,15 @@ public class CartController extends HttpServlet {
         User user = (User) session.getAttribute("user");
         if (user == null) {
             String productIdStr = request.getParameter("productId");
+            String requestedWith = request.getHeader("X-Requested-With");
+            boolean isAjax = "XMLHttpRequest".equalsIgnoreCase(requestedWith) || "true".equalsIgnoreCase(request.getParameter("ajax"));
+            if (isAjax) {
+                response.setContentType("application/json;charset=UTF-8");
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                String redirectUrl = request.getContextPath() + "/login?redirect=" + request.getContextPath() + "/product-detail?id=" + (productIdStr != null ? productIdStr.trim() : "1");
+                response.getWriter().write(String.format("{\"success\": false, \"requireLogin\": true, \"redirectUrl\": \"%s\"}", redirectUrl));
+                return;
+            }
             if (productIdStr != null && !productIdStr.trim().isEmpty()) {
                 session.setAttribute("redirectAfterLogin", request.getContextPath() + "/product-detail?id=" + productIdStr.trim());
             } else {
@@ -96,6 +112,20 @@ public class CartController extends HttpServlet {
             }
             session.setAttribute("errorMessage", "⚠️ Bạn chưa đăng nhập! Vui lòng đăng nhập tài khoản trước khi mua hàng hoặc thêm vào giỏ hàng.");
             response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+
+        // Quyền hạn: Tài khoản Quản trị viên (Admin) không thực hiện mua sắm hay thêm giỏ hàng
+        if (user.isAdmin() || user.getRole() == 1) {
+            String requestedWith = request.getHeader("X-Requested-With");
+            boolean isAjax = "XMLHttpRequest".equalsIgnoreCase(requestedWith) || "true".equalsIgnoreCase(request.getParameter("ajax"));
+            if (isAjax) {
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"success\": false, \"message\": \"Tài khoản Quản Trị Viên không thực hiện mua hàng cá nhân!\"}");
+                return;
+            }
+            session.setAttribute("toastInfo", "Tài khoản Quản Trị Viên không mua hàng cá nhân.");
+            response.sendRedirect(request.getContextPath() + "/admin/dashboard");
             return;
         }
 
@@ -158,11 +188,31 @@ public class CartController extends HttpServlet {
             }
             session.setAttribute("cart", cart);
 
+            // Kiểm tra nếu là AJAX request từ trình duyệt (thêm vào giỏ không cần load lại trang)
+            String requestedWith = request.getHeader("X-Requested-With");
+            boolean isAjax = "XMLHttpRequest".equalsIgnoreCase(requestedWith) || "true".equalsIgnoreCase(request.getParameter("ajax"));
+            if (isAjax && !"true".equalsIgnoreCase(buyNow) && !"1".equals(buyNow)) {
+                response.setContentType("application/json;charset=UTF-8");
+                response.setCharacterEncoding("UTF-8");
+                String prodName = (addedItem != null && addedItem.getProduct() != null) ? addedItem.getProduct().getName() : "Sản phẩm";
+                int totalCount = session.getAttribute("cartSize") != null ? (Integer) session.getAttribute("cartSize") : cart.size();
+                double total = session.getAttribute("cartTotal") != null ? (Double) session.getAttribute("cartTotal") : 0;
+                String safeProdName = prodName.replace("\\", "\\\\").replace("\"", "\\\"");
+                String safeSize = (size != null) ? size.replace("\\", "\\\\").replace("\"", "\\\"") : "";
+                String json = String.format(
+                    java.util.Locale.US,
+                    "{\"success\": true, \"cartSize\": %d, \"cartTotal\": %.0f, \"productName\": \"%s\", \"size\": \"%s\", \"quantity\": %d, \"message\": \"Đã thêm vào giỏ hàng thành công!\"}",
+                    totalCount, total, safeProdName, safeSize, quantity
+                );
+                response.getWriter().write(json);
+                return;
+            }
+
             // Nếu người dùng chọn "Mua ngay", chuyển thẳng tới trang Thanh toán (Checkout)
             if ("true".equalsIgnoreCase(buyNow) || "1".equals(buyNow)) {
                 response.sendRedirect(request.getContextPath() + "/checkout");
             } else {
-                // Nếu chọn "Thêm vào giỏ hàng", giữ người dùng ở lại trang sản phẩm để tiếp tục mua sắm
+                // Nếu chọn "Thêm vào giỏ hàng" truyền thống, giữ người dùng ở lại trang sản phẩm để tiếp tục mua sắm
                 response.sendRedirect(request.getContextPath() + "/product-detail?id=" + productId);
             }
             return;

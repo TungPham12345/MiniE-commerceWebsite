@@ -72,6 +72,10 @@ public class LoginController extends HttpServlet {
             String redirectUrl = (String) session.getAttribute("redirectAfterLogin");
             if (redirectUrl != null && !redirectUrl.trim().isEmpty()) {
                 session.removeAttribute("redirectAfterLogin");
+                if (user.isAdmin() && (redirectUrl.contains("my-orders") || redirectUrl.contains("cart") || redirectUrl.contains("checkout"))) {
+                    response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+                    return;
+                }
                 response.sendRedirect(redirectUrl);
                 return;
             }

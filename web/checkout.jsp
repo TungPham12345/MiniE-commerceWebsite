@@ -5,6 +5,11 @@
     Double cartTotalObj = (Double) session.getAttribute("cartTotal");
     double cartTotal = cartTotalObj != null ? cartTotalObj : 0;
     User currentUser = (User) session.getAttribute("user");
+    if (currentUser != null && (currentUser.isAdmin() || currentUser.getRole() == 1)) {
+        session.setAttribute("toastInfo", "Tài khoản Quản Trị Viên không đặt mua hàng.");
+        response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+        return;
+    }
     String errorMessage = (String) request.getAttribute("errorMessage");
     NumberFormat fmt = NumberFormat.getInstance(new Locale("vi", "VN"));
 %>
