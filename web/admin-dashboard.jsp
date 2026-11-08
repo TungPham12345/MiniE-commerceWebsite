@@ -131,7 +131,8 @@
                 <% if (recentOrders != null && !recentOrders.isEmpty()) { %>
                     <a href="${pageContext.request.contextPath}/admin/dashboard?action=deleteAll" 
                        class="btn btn-outline-danger btn-sm rounded-pill px-3 py-1 fw-bold"
-                       onclick="return confirm('⚠️ CẢNH BÁO: Bạn có chắc chắn muốn XÓA TOÀN BỘ đơn hàng trong hệ thống không?');">
+                       data-confirm-message="CẢNH BÁO: Bạn có chắc chắn muốn xóa toàn bộ đơn hàng trong hệ thống không?"
+                       data-confirm-label="Xóa tất cả" data-confirm-variant="danger">
                         <i class="bi bi-trash3 me-1"></i>Xóa tất cả đơn
                     </a>
                 <% } %>
@@ -197,26 +198,30 @@
                                         <% if ("PENDING".equals(o.getStatus())) { %>
                                             <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=DELIVERED" 
                                                class="btn btn-sm btn-success rounded-pill fw-bold px-3 py-1"
-                                               onclick="return confirm('Xác nhận duyệt và hoàn tất đơn hàng #<%= o.getId() %>?');">
+                                               data-confirm-message="Xác nhận duyệt và hoàn tất đơn hàng #<%= o.getId() %>?"
+                                               data-confirm-label="Duyệt đơn" data-confirm-variant="success">
                                                 <i class="bi bi-check-lg me-1"></i>Duyệt đơn
                                             </a>
                                             <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=CANCELLED" 
                                                class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1"
-                                               onclick="return confirm('Bạn có chắc chắn muốn hủy đơn hàng #<%= o.getId() %>?');" title="Hủy đơn hàng">
+                                               data-confirm-message="Bạn có chắc chắn muốn hủy đơn hàng #<%= o.getId() %>?"
+                                               data-confirm-label="Hủy đơn" data-confirm-variant="danger" title="Hủy đơn hàng">
                                                 <i class="bi bi-x-lg"></i>
                                             </a>
                                         <% } else if ("CANCELLED".equals(o.getStatus())) { %>
                                             <span class="text-danger small fw-semibold me-1"><i class="bi bi-x-circle me-1"></i>Đã hủy</span>
                                             <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=PENDING" 
                                                class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1"
-                                               onclick="return confirm('Khôi phục đơn hàng #<%= o.getId() %> về Chờ xử lý?');" title="Khôi phục đơn">
+                                               data-confirm-message="Khôi phục đơn hàng #<%= o.getId() %> về Chờ xử lý?"
+                                               data-confirm-label="Khôi phục" data-confirm-variant="primary" title="Khôi phục đơn">
                                                 <i class="bi bi-arrow-counterclockwise"></i>
                                             </a>
                                         <% } else { %>
                                             <span class="text-success small fw-semibold me-1"><i class="bi bi-check2-all me-1"></i>Đã duyệt</span>
                                             <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=PENDING" 
                                                class="btn btn-sm btn-outline-warning rounded-pill px-2 py-1"
-                                               onclick="return confirm('Chuyển đơn hàng #<%= o.getId() %> về trạng thái Chờ xử lý?');" title="Khôi phục về Chờ xử lý">
+                                               data-confirm-message="Chuyển đơn hàng #<%= o.getId() %> về trạng thái Chờ xử lý?"
+                                               data-confirm-label="Khôi phục" data-confirm-variant="primary" title="Khôi phục về Chờ xử lý">
                                                 <i class="bi bi-arrow-counterclockwise"></i>
                                             </a>
                                         <% } %>
@@ -224,7 +229,8 @@
                                         <!-- Nút Xóa Đơn Hàng -->
                                         <a href="${pageContext.request.contextPath}/admin/dashboard?action=delete&orderId=<%= o.getId() %>" 
                                            class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1 ms-1 text-danger border-danger-subtle"
-                                           onclick="return confirm('Bạn có chắc muốn xóa vĩnh viễn đơn hàng #<%= o.getId() %> khỏi hệ thống?');" title="Xóa vĩnh viễn đơn hàng">
+                                           data-confirm-message="Bạn có chắc muốn xóa vĩnh viễn đơn hàng #<%= o.getId() %> khỏi hệ thống?"
+                                           data-confirm-label="Xóa đơn" data-confirm-variant="danger" title="Xóa vĩnh viễn đơn hàng">
                                             <i class="bi bi-trash3"></i>
                                         </a>
                                     </div>
@@ -301,14 +307,23 @@
                                                 <tr>
                                                     <td>
                                                         <div class="d-flex align-items-center gap-2">
-                                                            <% if (d.getProductImage() != null && !d.getProductImage().isEmpty()) { %>
-                                                                <img src="<%= d.getProductImage() %>" alt="thumb" class="rounded border" style="width: 45px; height: 45px; object-fit: cover;">
+                                                            <% if (d.getProductImage() != null && !d.getProductImage().isEmpty()) {
+                                                                String orderImg = d.getProductImage();
+                                                                if (!orderImg.startsWith("http://") && !orderImg.startsWith("https://")
+                                                                        && !orderImg.startsWith(request.getContextPath())) {
+                                                                    orderImg = request.getContextPath() + (orderImg.startsWith("/") ? "" : "/") + orderImg;
+                                                                }
+                                                            %>
+                                                                <img src="<%= orderImg %>" alt="Ảnh sản phẩm"
+                                                                     class="rounded border flex-shrink-0"
+                                                                     style="width: 45px; height: 45px; object-fit: cover;"
+                                                                     onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600';">
                                                             <% } else { %>
-                                                                <div class="bg-secondary rounded text-white d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+                                                                <div class="bg-secondary rounded text-white d-flex align-items-center justify-content-center flex-shrink-0" style="width: 45px; height: 45px;">
                                                                     <i class="bi bi-image"></i>
                                                                 </div>
                                                             <% } %>
-                                                            <span class="fw-semibold"><%= d.getProductName() != null ? d.getProductName() : ("Sản phẩm #" + d.getProductId()) %></span>
+                                                            <span class="fw-semibold" style="min-width: 0;"><%= d.getProductName() != null ? d.getProductName() : ("Sản phẩm #" + d.getProductId()) %></span>
                                                         </div>
                                                     </td>
                                                     <td>
@@ -316,8 +331,8 @@
                                                         <span class="badge bg-light text-dark border">Màu: <%= d.getColor() %></span>
                                                     </td>
                                                     <td class="text-center fw-bold"><%= d.getQuantity() %></td>
-                                                    <td class="text-end"><%= fmt.format(d.getPrice()) %> đ</td>
-                                                    <td class="text-end fw-bold text-danger"><%= fmt.format(d.getTotalMoney()) %> đ</td>
+                                                    <td class="text-end text-nowrap"><%= fmt.format(d.getPrice()) %>&nbsp;đ</td>
+                                                    <td class="text-end text-nowrap fw-bold text-danger"><%= fmt.format(d.getTotalMoney()) %>&nbsp;đ</td>
                                                 </tr>
                                         <%  }
                                            } else { %>
@@ -331,19 +346,21 @@
 
                             <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded-3 border">
                                 <span class="fw-bold fs-6">TỔNG CỘNG THANH TOÁN:</span>
-                                <span class="fw-extrabold text-danger fs-5"><%= fmt.format(o.getTotalMoney()) %> đ</span>
+                                <span class="fw-extrabold text-danger fs-5 text-nowrap"><%= fmt.format(o.getTotalMoney()) %>&nbsp;đ</span>
                             </div>
                         </div>
                         <div class="modal-footer bg-light rounded-bottom-4">
                             <% if ("PENDING".equals(o.getStatus())) { %>
                                 <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=DELIVERED" 
                                    class="btn btn-success rounded-pill fw-bold px-4"
-                                   onclick="return confirm('Xác nhận duyệt và hoàn tất đơn hàng #<%= o.getId() %>?');">
+                                   data-confirm-message="Xác nhận duyệt và hoàn tất đơn hàng #<%= o.getId() %>?"
+                                   data-confirm-label="Duyệt đơn" data-confirm-variant="success">
                                     <i class="bi bi-check-lg me-1"></i>Duyệt Đơn Này
                                 </a>
                                 <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=CANCELLED" 
                                    class="btn btn-outline-danger rounded-pill fw-medium px-3"
-                                   onclick="return confirm('Bạn có chắc chắn muốn hủy đơn hàng #<%= o.getId() %>?');">
+                                   data-confirm-message="Bạn có chắc chắn muốn hủy đơn hàng #<%= o.getId() %>?"
+                                   data-confirm-label="Hủy đơn" data-confirm-variant="danger">
                                     <i class="bi bi-x-lg me-1"></i>Hủy Đơn
                                 </a>
                             <% } %>
@@ -354,6 +371,81 @@
             </div>
     <%  }
        } %>
+
+    <dialog id="orderActionConfirm" class="order-confirm-dialog rounded-4 border-0 shadow p-0"
+            aria-labelledby="orderConfirmTitle" aria-describedby="orderConfirmMessage">
+        <div class="p-4">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <span class="order-confirm-icon rounded-circle d-flex align-items-center justify-content-center text-warning bg-warning bg-opacity-10">
+                    <i class="bi bi-exclamation-circle-fill fs-4"></i>
+                </span>
+                <h5 id="orderConfirmTitle" class="fw-bold mb-0">Xác nhận thao tác</h5>
+            </div>
+            <p id="orderConfirmMessage" class="text-body-secondary mb-4"></p>
+            <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-light border rounded-pill px-4" data-confirm-cancel>Hủy bỏ</button>
+                <button type="button" class="btn btn-danger rounded-pill px-4" data-confirm-submit>Đồng ý</button>
+            </div>
+        </div>
+    </dialog>
+
+    <style>
+        .order-confirm-dialog {
+            width: min(420px, calc(100% - 2rem));
+            max-width: none;
+            color: var(--bs-body-color);
+            background: var(--bs-body-bg);
+        }
+
+        .order-confirm-dialog::backdrop {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(2px);
+        }
+
+        .order-confirm-icon {
+            width: 48px;
+            height: 48px;
+            flex: 0 0 48px;
+        }
+    </style>
+
+    <script>
+        (function() {
+            const dialog = document.getElementById('orderActionConfirm');
+            const message = document.getElementById('orderConfirmMessage');
+            const submitButton = dialog.querySelector('[data-confirm-submit]');
+            const cancelButton = dialog.querySelector('[data-confirm-cancel]');
+            let pendingUrl = null;
+            const buttonVariants = ['btn-danger', 'btn-success', 'btn-primary'];
+
+            document.addEventListener('click', function(event) {
+                const trigger = event.target.closest('a[data-confirm-message]');
+                if (!trigger) return;
+
+                event.preventDefault();
+                pendingUrl = trigger.href;
+                message.textContent = trigger.dataset.confirmMessage;
+                submitButton.textContent = trigger.dataset.confirmLabel || 'Đồng ý';
+                submitButton.classList.remove(...buttonVariants);
+                submitButton.classList.add('btn-' + (trigger.dataset.confirmVariant || 'danger'));
+                dialog.showModal();
+                cancelButton.focus();
+            });
+
+            cancelButton.addEventListener('click', function() {
+                pendingUrl = null;
+                dialog.close();
+            });
+
+            submitButton.addEventListener('click', function() {
+                if (pendingUrl) window.location.assign(pendingUrl);
+            });
+
+            dialog.addEventListener('close', function() {
+                pendingUrl = null;
+            });
+        })();
+    </script>
 </div>
 
 <jsp:include page="includes/footer.jsp" />
