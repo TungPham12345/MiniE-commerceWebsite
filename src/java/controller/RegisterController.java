@@ -62,8 +62,24 @@ public class RegisterController extends HttpServlet {
         // Lấy địa chỉ giao hàng từ form
         String address = request.getParameter("address");
 
-        // Kiểm tra xem mật khẩu nhập lại có trùng khớp với mật khẩu ban đầu hay không
-        if (password != null && !password.equals(confirmPassword)) {
+        // 1. Kiểm tra không được để trống tên đăng nhập
+        if (username == null || username.trim().isEmpty()) {
+            request.setAttribute("error", "Tên đăng nhập không được để trống!");
+            request.setAttribute("errorMessage", "❌ Tên đăng nhập không được để trống!");
+            request.getRequestDispatcher("register.jsp").forward(request, response);
+            return;
+        }
+
+        // 2. Kiểm tra không được để trống mật khẩu
+        if (password == null || password.trim().isEmpty()) {
+            request.setAttribute("error", "Mật khẩu không được để trống!");
+            request.setAttribute("errorMessage", "❌ Mật khẩu không được để trống!");
+            request.getRequestDispatcher("register.jsp").forward(request, response);
+            return;
+        }
+
+        // 3. Kiểm tra xem mật khẩu nhập lại có trùng khớp với mật khẩu ban đầu hay không
+        if (!password.equals(confirmPassword)) {
             // Nếu không khớp, đính kèm thông báo lỗi vào request
             request.setAttribute("error", "Mật khẩu xác nhận không khớp!");
             request.setAttribute("errorMessage", "❌ Mật khẩu xác nhận không khớp!");
@@ -72,21 +88,32 @@ public class RegisterController extends HttpServlet {
             return; // Dừng hàm, không xử lý tiếp
         }
 
-        // Khởi tạo đối tượng UserDAO để chuẩn bị thêm người dùng vào CSDL
+        // Khởi tạo đối tượng UserDAO để chuẩn bị thêm người dùng vào hệ thống
         UserDAO userDAO = new UserDAO();
-        // Khởi tạo đối tượng User với role = 0 (0: Khách hàng thông thường, 1: Quản trị viên Admin)
-        User user = new User(0, username, password, fullname, email, phone, address, 0);
 
-        // Gọi hàm register trong DAO để lưu người dùng vào Database
+        // 4. Kiểm tra xem tên đăng nhập đã được ai đăng ký trước đó chưa
+        if (userDAO.checkUsernameExists(username.trim())) {
+            request.setAttribute("error", "Tên đăng nhập này đã được sử dụng! Vui lòng chọn tên khác.");
+            request.setAttribute("errorMessage", "❌ Tên đăng nhập này đã được sử dụng! Vui lòng chọn tên khác.");
+            request.getRequestDispatcher("register.jsp").forward(request, response);
+            return;
+        }
+
+        // Khởi tạo đối tượng User với role = 0 (0: Khách hàng thông thường, 1: Quản trị viên Admin)
+        User user = new User(0, username.trim(), password.trim(), fullname, email, phone, address, 0);
+
+        // Gọi hàm register trong DAO để lưu người dùng vào CSDL hoặc bộ nhớ dự phòng
         boolean success = userDAO.register(user);
-        // Cơ chế fallback dự phòng: Luôn đảm bảo đăng ký thành công khi chạy thử nghiệm demo
         if (!success) {
-            success = true;
+            request.setAttribute("error", "Đăng ký không thành công, vui lòng thử lại!");
+            request.setAttribute("errorMessage", "❌ Đăng ký không thành công, vui lòng thử lại!");
+            request.getRequestDispatcher("register.jsp").forward(request, response);
+            return;
         }
 
         // Đính kèm thông báo đăng ký thành công vào request
         request.setAttribute("success", "Đăng ký tài khoản thành công! Vui lòng đăng nhập.");
-        request.setAttribute("successMessage", "🎉 Đăng ký tài khoản thành công! Vui lòng đăng nhập.");
+        request.setAttribute("successMessage", "🎉 Đăng ký tài khoản thành công! Vui lòng đăng nhập với thông tin vừa tạo.");
         // Chuyển tiếp người dùng sang trang login.jsp để tiến hành đăng nhập với tài khoản vừa tạo
         request.getRequestDispatcher("login.jsp").forward(request, response);
     }
