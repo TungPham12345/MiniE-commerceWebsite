@@ -2,6 +2,8 @@ package model;
 
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Lớp Product: Đại diện cho thực thể Sản phẩm trong cửa hàng trực tuyến (bảng `products` trong CSDL)
@@ -25,6 +27,7 @@ public class Product implements Serializable {
     private String image;
     // Danh sách kích cỡ có sẵn (ví dụ: "S, M, L, XL" hoặc "39, 40, 41")
     private String size;
+    private Map<String, Integer> stockBySize = new LinkedHashMap<>();
     // Danh sách màu sắc có sẵn (ví dụ: "Trắng, Đen, Xanh")
     private String color;
     // Mã danh mục (Khóa ngoại trỏ đến bảng categories)
@@ -206,6 +209,26 @@ public class Product implements Serializable {
      */
     public void setSize(String size) {
         this.size = size;
+    }
+
+    public Map<String, Integer> getStockBySize() {
+        return stockBySize;
+    }
+
+    public void setStockBySize(Map<String, Integer> stockBySize) {
+        this.stockBySize = stockBySize != null ? new LinkedHashMap<>(stockBySize) : new LinkedHashMap<>();
+    }
+
+    public int getStockForSize(String requestedSize) {
+        if (requestedSize == null) {
+            return 0;
+        }
+        for (Map.Entry<String, Integer> entry : stockBySize.entrySet()) {
+            if (entry.getKey().equalsIgnoreCase(requestedSize.trim())) {
+                return entry.getValue();
+            }
+        }
+        return 0;
     }
 
     /**

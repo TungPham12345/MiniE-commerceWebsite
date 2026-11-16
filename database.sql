@@ -17,6 +17,7 @@ GO
 IF OBJECT_ID('stores', 'U') IS NOT NULL DROP TABLE stores;
 IF OBJECT_ID('order_details', 'U') IS NOT NULL DROP TABLE order_details;
 IF OBJECT_ID('orders', 'U') IS NOT NULL DROP TABLE orders;
+IF OBJECT_ID('product_size_stock', 'U') IS NOT NULL DROP TABLE product_size_stock;
 IF OBJECT_ID('products', 'U') IS NOT NULL DROP TABLE products;
 IF OBJECT_ID('categories', 'U') IS NOT NULL DROP TABLE categories;
 IF OBJECT_ID('users', 'U') IS NOT NULL DROP TABLE users;
@@ -48,6 +49,15 @@ CREATE TABLE products (
 );
 GO
 
+CREATE TABLE product_size_stock (
+    product_id INT NOT NULL,
+    size NVARCHAR(50) NOT NULL,
+    quantity INT NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+    CONSTRAINT PK_product_size_stock PRIMARY KEY (product_id, size),
+    CONSTRAINT FK_product_size_stock_products FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+GO
+
 -- 3. Bang Nguoi dung (Users)
 CREATE TABLE users (
     id INT IDENTITY(1,1) PRIMARY KEY,
@@ -74,6 +84,7 @@ CREATE TABLE orders (
     total_money FLOAT NOT NULL,
     payment_method NVARCHAR(50) DEFAULT 'COD',
     status NVARCHAR(50) DEFAULT 'PENDING',
+    stock_deducted BIT NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT GETDATE()
 );
 GO

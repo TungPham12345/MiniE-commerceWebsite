@@ -59,13 +59,19 @@ public class CartController extends HttpServlet {
             cart = new ArrayList<>();
         }
 
+        ProductDAO productDAO = new ProductDAO();
         double totalMoney = 0;
         int totalCount = 0;
         for (CartItem item : cart) {
+            Product currentProduct = productDAO.getProductById(item.getProduct().getId());
+            if (currentProduct != null) {
+                item.setProduct(currentProduct);
+            }
             totalMoney += item.getTotalMoney();
             totalCount += item.getQuantity();
         }
 
+        session.setAttribute("cart", cart);
         session.setAttribute("cartTotal", totalMoney);
         session.setAttribute("cartSize", totalCount);
         request.setAttribute("cart", cart);
@@ -149,19 +155,48 @@ public class CartController extends HttpServlet {
             String size = request.getParameter("size");
             String color = request.getParameter("color");
             String buyNow = request.getParameter("buyNow");
+            boolean isAjax = isAjaxRequest(request);
 
-            // Gán giá trị mặc định nếu người dùng chưa chọn size hoặc màu
-            if (size == null || size.trim().isEmpty()) size = "M";
+            // Gán giá trị mặc định nếu người dùng chưa chọn màu
             if (color == null || color.trim().isEmpty()) color = "Đen";
 
             // Tìm sản phẩm trong CSDL theo ID
             Product p = productDAO.getProductById(productId);
             if (p != null) {
+                if (size == null || size.trim().isEmpty()) {
+                    size = dao.ProductStockDAO.parseSizes(p.getSize()).get(0);
+                }
+                int quantityInCart = 0;
+                for (CartItem item : cart) {
+                    if (item.getProduct().getId() == productId
+                            && item.getSize() != null
+                            && item.getSize().equalsIgnoreCase(size)) {
+                        quantityInCart += item.getQuantity();
+                    }
+                }
+                int availableForSize = p.getStockForSize(size);
+                if (quantity <= 0 || quantity > availableForSize - quantityInCart) {
+                    String error = availableForSize <= quantityInCart
+                            ? "Size " + size + " đã hết hàng."
+                            : "Size " + size + " chỉ còn " + Math.max(0, availableForSize - quantityInCart)
+                                    + " sản phẩm có thể thêm.";
+                    if (isAjax && !"true".equalsIgnoreCase(buyNow) && !"1".equals(buyNow)) {
+                        writeCartError(response, error);
+                    } else {
+                        session.setAttribute("cartError", error);
+                        response.sendRedirect(request.getContextPath() + "/product-detail?id=" + productId);
+                    }
+                    return;
+                }
+
                 boolean found = false;
                 for (CartItem item : cart) {
                     if (item.getProduct().getId() == productId 
-                        && item.getSize().equalsIgnoreCase(size) 
+                        && item.getSize() != null
+                        && item.getSize().equalsIgnoreCase(size)
+                        && item.getColor() != null
                         && item.getColor().equalsIgnoreCase(color)) {
+                        item.setProduct(p);
                         item.setQuantity(item.getQuantity() + quantity);
                         found = true;
                         addedItem = item;
@@ -189,8 +224,6 @@ public class CartController extends HttpServlet {
             session.setAttribute("cart", cart);
 
             // Kiểm tra nếu là AJAX request từ trình duyệt (thêm vào giỏ không cần load lại trang)
-            String requestedWith = request.getHeader("X-Requested-With");
-            boolean isAjax = "XMLHttpRequest".equalsIgnoreCase(requestedWith) || "true".equalsIgnoreCase(request.getParameter("ajax"));
             if (isAjax && !"true".equalsIgnoreCase(buyNow) && !"1".equals(buyNow)) {
                 response.setContentType("application/json;charset=UTF-8");
                 response.setCharacterEncoding("UTF-8");
@@ -224,17 +257,51 @@ public class CartController extends HttpServlet {
             int productId = Integer.parseInt(request.getParameter("productId"));
             int quantity = Integer.parseInt(request.getParameter("quantity"));
             String size = request.getParameter("size");
-
+            String color = request.getParameter("color");
+            Product currentProduct = productDAO.getProductById(productId);
+            CartItem itemToUpdate = null;
             for (CartItem item : cart) {
-                if (item.getProduct().getId() == productId && (size == null || item.getSize().equalsIgnoreCase(size))) {
-                    if (quantity <= 0) {
-                        // Nếu số lượng chỉnh về <= 0 thì tự động xóa món này khỏi giỏ
-                        cart.remove(item);
-                    } else {
-                        // Cập nhật số lượng mới
-                        item.setQuantity(quantity);
-                    }
+                if (item.getProduct().getId() == productId
+                        && size != null && item.getSize() != null
+                        && item.getSize().equalsIgnoreCase(size)
+                        && (color == null || (item.getColor() != null && item.getColor().equalsIgnoreCase(color)))) {
+                    itemToUpdate = item;
                     break;
+                }
+            }
+            int quantityInOtherCartItems = 0;
+            for (CartItem item : cart) {
+                if (item.getProduct().getId() == productId
+                        && size != null && item.getSize() != null
+                        && item.getSize().equalsIgnoreCase(size)
+                        && item != itemToUpdate) {
+                    quantityInOtherCartItems += item.getQuantity();
+                }
+            }
+            if (quantity > 0 && currentProduct != null
+                    && (itemToUpdate == null
+                    || quantity > currentProduct.getStockForSize(size) - quantityInOtherCartItems)) {
+                String error = "Size " + size + " chỉ còn "
+                        + Math.max(0, currentProduct.getStockForSize(size) - quantityInOtherCartItems)
+                        + " sản phẩm có thể đặt.";
+                if (isAjaxRequest(request)) {
+                    session.setAttribute("cartError", error);
+                    writeCartError(response, error);
+                } else {
+                    session.setAttribute("cartError", error);
+                    response.sendRedirect(request.getContextPath() + "/cart");
+                }
+                return;
+            }
+
+            if (itemToUpdate != null) {
+                if (currentProduct != null) {
+                    itemToUpdate.setProduct(currentProduct);
+                }
+                if (quantity <= 0) {
+                    cart.remove(itemToUpdate);
+                } else {
+                    itemToUpdate.setQuantity(quantity);
                 }
             }
 
@@ -244,9 +311,12 @@ public class CartController extends HttpServlet {
         } else if ("remove".equals(action)) {
             int productId = Integer.parseInt(request.getParameter("productId"));
             String size = request.getParameter("size");
+            String color = request.getParameter("color");
 
             if (size != null && !size.isEmpty()) {
-                cart.removeIf(item -> item.getProduct().getId() == productId && item.getSize().equalsIgnoreCase(size));
+                cart.removeIf(item -> item.getProduct().getId() == productId
+                        && item.getSize() != null && item.getSize().equalsIgnoreCase(size)
+                        && (color == null || (item.getColor() != null && item.getColor().equalsIgnoreCase(color))));
             } else {
                 cart.removeIf(item -> item.getProduct().getId() == productId);
             }
@@ -266,13 +336,24 @@ public class CartController extends HttpServlet {
         session.setAttribute("cartSize", totalCount);
 
         // If request is AJAX, respond with OK status
-        String requestedWith = request.getHeader("X-Requested-With");
-        if ("XMLHttpRequest".equalsIgnoreCase(requestedWith)) {
+        if (isAjaxRequest(request)) {
             response.setStatus(HttpServletResponse.SC_OK);
             return;
         }
 
         // Chuyển hướng người dùng về trang xem giỏ hàng
         response.sendRedirect(request.getContextPath() + "/cart");
+    }
+
+    private boolean isAjaxRequest(HttpServletRequest request) {
+        return "XMLHttpRequest".equalsIgnoreCase(request.getHeader("X-Requested-With"))
+                || "true".equalsIgnoreCase(request.getParameter("ajax"));
+    }
+
+    private void writeCartError(HttpServletResponse response, String message) throws IOException {
+        response.setContentType("application/json;charset=UTF-8");
+        response.setStatus(HttpServletResponse.SC_CONFLICT);
+        String safeMessage = message.replace("\\", "\\\\").replace("\"", "\\\"");
+        response.getWriter().write("{\"success\":false,\"message\":\"" + safeMessage + "\"}");
     }
 }

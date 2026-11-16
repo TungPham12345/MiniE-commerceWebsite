@@ -25,8 +25,36 @@
     Double cartTotalObj = (Double) session.getAttribute("cartTotal");
     int cartSize = cartSizeObj != null ? cartSizeObj : 0;
     double cartTotal = cartTotalObj != null ? cartTotalObj : 0;
+    String cartError = (String) session.getAttribute("cartError");
+    if (cartError != null) { session.removeAttribute("cartError"); }
+    List<CartItem> currentCart = (List<CartItem>) session.getAttribute("cart");
     
     int catId = (product != null) ? product.getCategoryId() : 1;
+    String[] currentSizes = product != null
+            ? dao.ProductStockDAO.parseSizes(product.getSize()).toArray(new String[0])
+            : new String[0];
+    String defaultSelectedSize = currentSizes.length > 0 ? currentSizes[0] : "Freesize";
+    int defaultRemainingStock = 0;
+    if (product != null) {
+        for (String sizeOption : currentSizes) {
+            int inCartForSize = 0;
+            if (currentCart != null) {
+                for (CartItem item : currentCart) {
+                    if (item.getProduct().getId() == product.getId()
+                            && item.getSize() != null
+                            && item.getSize().equalsIgnoreCase(sizeOption)) {
+                        inCartForSize += item.getQuantity();
+                    }
+                }
+            }
+            int remaining = Math.max(0, product.getStockForSize(sizeOption) - inCartForSize);
+            if (remaining > 0) {
+                defaultSelectedSize = sizeOption;
+                defaultRemainingStock = remaining;
+                break;
+            }
+        }
+    }
 %>
 
 <jsp:include page="includes/header.jsp" />
@@ -158,54 +186,76 @@
                 <form action="${pageContext.request.contextPath}/cart" method="POST" id="buyForm">
                     <input type="hidden" name="action" value="add">
                     <input type="hidden" name="productId" value="<%= product.getId() %>">
-                    <input type="hidden" name="size" id="selectedSizeInput" value="<%= catId == 4 ? "Freesize" : (catId == 3 ? "S" : "M") %>">
+                    <input type="hidden" name="size" id="selectedSizeInput" value="<%= defaultSelectedSize %>">
                     <input type="hidden" name="color" value="<%= product.getColor() != null ? product.getColor().split(",")[0].trim() : "Default" %>">
                     <input type="hidden" name="buyNow" id="buyNowInput" value="false">
 
-                    <!-- SIZE Selection Grid Khác Nhau Theo Loại Sản Phẩm -->
-                    <div class="size-title">SIZE SẢN PHẨM</div>
+                    <div class="size-title">CHỌN SIZE</div>
                     <div class="size-grid" id="sizeGrid">
-                        <% 
-                            String[] currentSizes;
-                            if (catId == 1) { // Áo Nam
-                                currentSizes = new String[]{"S", "M", "L", "XL", "XXL"};
-                            } else if (catId == 2) { // Quần Nam
-                                currentSizes = new String[]{"28", "29", "30", "31", "32", "34"};
-                            } else if (catId == 3) { // Thời Trang Nữ
-                                currentSizes = new String[]{"XS", "S", "M", "L", "XL"};
-                            } else { // Phụ Kiện
-                                currentSizes = new String[]{"Freesize", "One Size"};
-                            }
-                            
+                        <%
                             for (int i = 0; i < currentSizes.length; i++) {
                                 String sz = currentSizes[i];
-                                boolean isDefaultActive = (i == 1 || (catId == 4 && i == 0));
+                                int inCartForSize = 0;
+                                if (currentCart != null) {
+                                    for (CartItem item : currentCart) {
+                                        if (item.getProduct().getId() == product.getId()
+                                                && item.getSize() != null
+                                                && item.getSize().equalsIgnoreCase(sz)) {
+                                            inCartForSize += item.getQuantity();
+                                        }
+                                    }
+                                }
+                                int remainingForSize = Math.max(0, product.getStockForSize(sz) - inCartForSize);
+                                boolean isDefaultActive = sz.equalsIgnoreCase(defaultSelectedSize);
                         %>
-                            <div class="size-box <%= isDefaultActive ? "active" : "" %>" 
+                            <div class="size-box <%= isDefaultActive ? "active" : "" %> <%= product.getStockForSize(sz) == 0 ? "disabled" : "" %>"
+                                 data-stock="<%= remainingForSize %>" data-total-stock="<%= product.getStockForSize(sz) %>"
                                  onclick="selectSize('<%= sz %>', this)">
-                                 <%= sz %>
+                                <span><%= sz %></span>
+                                <small class="size-stock-count"><%= product.getStockForSize(sz) > 0
+                                        ? "Còn " + product.getStockForSize(sz)
+                                        : "Hết hàng" %></small>
                             </div>
                         <% } %>
                     </div>
 
                     <% if (currentUser == null || !currentUser.isAdmin()) { %>
-                    <!-- Quantity Stepper & 2 Lựa chọn: Thêm vào giỏ hàng trước & Mua ngay cho Khách Hàng -->
-                    <div class="d-flex flex-wrap align-items-center gap-3 mb-5">
-                        <div class="quantity-stepper">
-                            <button type="button" onclick="changeQty(-1)">-</button>
-                            <input type="number" name="quantity" id="quantityInput" value="1" min="1" max="<%= product.getQuantity() %>" readonly>
-                            <button type="button" onclick="changeQty(1)">+</button>
+                    <% if (cartError != null) { %>
+                        <div class="alert alert-warning py-2 mb-3" role="alert"><%= cartError %></div>
+                    <% } %>
+                    <div id="cartActionError" class="alert alert-warning py-2 mb-3 d-none" role="alert"></div>
+                    <div class="purchase-panel">
+                        <div class="purchase-stock-row">
+                            <div class="quantity-control-group">
+                                <label for="quantityInput">Số lượng</label>
+                                <div class="quantity-stepper">
+                                    <button type="button" aria-label="Giảm số lượng" onclick="changeQty(-1)" <%= defaultRemainingStock <= 0 ? "disabled" : "" %>>-</button>
+                                    <input type="number" name="quantity" id="quantityInput" value="1" min="1" max="<%= defaultRemainingStock %>" readonly>
+                                    <button type="button" aria-label="Tăng số lượng" onclick="changeQty(1)" <%= defaultRemainingStock <= 0 ? "disabled" : "" %>>+</button>
+                                </div>
+                            </div>
+                            <span id="selectedSizeStock" class="selected-size-stock <%= product.getStockForSize(defaultSelectedSize) <= 0 ? "is-out-of-stock" : "" %>">
+                                <i class="bi bi-box-seam" aria-hidden="true"></i>
+                                <span id="selectedSizeStockText" aria-live="polite">
+                                    <% if (product.getStockForSize(defaultSelectedSize) > 0) { %>
+                                        Size <%= defaultSelectedSize %> còn <%= product.getStockForSize(defaultSelectedSize) %> trong kho
+                                        <% if (defaultRemainingStock < product.getStockForSize(defaultSelectedSize)) { %>
+                                            (có thể thêm <%= defaultRemainingStock %>)
+                                        <% } %>
+                                    <% } else { %>
+                                        Size <%= defaultSelectedSize %> đã hết hàng
+                                    <% } %>
+                                </span>
+                            </span>
                         </div>
-
-                        <!-- Lựa chọn 1: Thêm vào giỏ hàng trước -->
-                        <button type="button" id="addToCartBtn" class="btn-add-to-cart" onclick="submitToCart(false)">
-                            <i class="bi bi-cart-plus fs-5"></i> Thêm vào giỏ hàng
-                        </button>
-
-                        <!-- Lựa chọn 2: Mua ngay -->
-                        <button type="button" class="btn-buy-now" onclick="submitToCart(true)">
-                            <i class="bi bi-lightning-charge-fill fs-5"></i> Mua ngay
-                        </button>
+                        <div class="purchase-actions">
+                            <button type="button" id="addToCartBtn" class="btn-add-to-cart" onclick="submitToCart(false)" <%= defaultRemainingStock <= 0 ? "disabled" : "" %>>
+                                <i class="bi bi-cart-plus" aria-hidden="true"></i> Thêm vào giỏ hàng
+                            </button>
+                            <button type="button" id="buyNowBtn" class="btn-buy-now" onclick="submitToCart(true)" <%= defaultRemainingStock <= 0 ? "disabled" : "" %>>
+                                <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i> Mua ngay
+                            </button>
+                        </div>
                     </div>
                     <% } else { %>
                     <!-- Chế độ xem dành riêng cho Quản trị viên (Admin không thực hiện mua sắm cá nhân) -->
@@ -396,9 +446,13 @@
                         </div>
                         <div class="collapse" id="storeStockCollapse">
                             <div class="info-accordion-body">
-                                <p class="mb-2"><i class="bi bi-geo-alt-fill text-danger me-2"></i> <strong>Chi nhánh 1 (Flagship):</strong> 24 Tràng Tiền, Quận Hoàn Kiếm, Hà Nội <span class="badge bg-success ms-2">Còn hàng</span></p>
-                                <p class="mb-2"><i class="bi bi-geo-alt-fill text-danger me-2"></i> <strong>Chi nhánh 2:</strong> 191 Bà Triệu, Quận Hai Bà Trưng, Hà Nội <span class="badge bg-success ms-2">Còn hàng</span></p>
-                                <p class="mb-2"><i class="bi bi-geo-alt-fill text-danger me-2"></i> <strong>Chi nhánh 3:</strong> 180 Cầu Giấy, Quận Cầu Giấy, Hà Nội <span class="badge bg-success ms-2">Còn hàng</span></p>
+                                <div class="d-flex flex-wrap gap-2 mb-2">
+                                    <% for (String sizeOption : currentSizes) { %>
+                                        <span class="badge <%= product.getStockForSize(sizeOption) > 0 ? "bg-success" : "bg-secondary" %>">
+                                            Size <%= sizeOption %>: <%= product.getStockForSize(sizeOption) %> còn
+                                        </span>
+                                    <% } %>
+                                </div>
                                 <div class="mt-2 pt-2 border-top">
                                     <a href="${pageContext.request.contextPath}/stores" class="text-danger small fw-bold text-decoration-none">
                                         <i class="bi bi-map-fill me-1"></i> Xem vị trí trên bản đồ hệ thống
@@ -503,6 +557,7 @@ function updateNavbarCartBadge(count) {
 }
 
 function selectSize(sz, element) {
+    if (element.classList.contains('disabled')) return;
     document.getElementById('selectedSizeInput').value = sz;
     var boxes = document.querySelectorAll('.size-box');
     boxes.forEach(function(b) {
@@ -511,12 +566,42 @@ function selectSize(sz, element) {
         }
     });
     element.classList.add('active');
+
+    var stock = parseInt(element.dataset.stock) || 0;
+    var totalStock = parseInt(element.dataset.totalStock) || 0;
+    var quantityInput = document.getElementById('quantityInput');
+    if (!quantityInput) return;
+    quantityInput.max = stock;
+    if (parseInt(quantityInput.value) > stock) {
+        quantityInput.value = stock > 0 ? stock : 1;
+    }
+
+    var stepperButtons = quantityInput.parentElement.querySelectorAll('button');
+    stepperButtons.forEach(function(button) {
+        button.disabled = stock <= 0;
+    });
+
+    var addButton = document.getElementById('addToCartBtn');
+    var buyButton = document.getElementById('buyNowBtn');
+    if (addButton) addButton.disabled = stock <= 0;
+    if (buyButton) buyButton.disabled = stock <= 0;
+
+    var stockLabel = document.getElementById('selectedSizeStock');
+    if (stockLabel) {
+        var stockText = document.getElementById('selectedSizeStockText');
+        stockText.textContent = totalStock > 0
+                ? 'Size ' + sz + ' còn ' + totalStock + ' trong kho'
+                    + (stock < totalStock ? ' (có thể thêm ' + stock + ')' : '')
+                : 'Size ' + sz + ' đã hết hàng';
+        stockLabel.classList.toggle('is-out-of-stock', totalStock <= 0);
+    }
 }
 
 function changeQty(delta) {
     var input = document.getElementById('quantityInput');
     var val = parseInt(input.value) + delta;
-    if (val >= 1) {
+    var max = parseInt(input.max) || 0;
+    if (val >= 1 && val <= max) {
         input.value = val;
     }
 }
@@ -561,17 +646,30 @@ function submitToCart(isBuyNow) {
     })
     .then(res => res.json())
     .then(data => {
+        if (data.requireLogin && data.redirectUrl) {
+            window.location.href = data.redirectUrl;
+            return;
+        }
+
+        if (!data.success) {
+            if (btnAdd) {
+                btnAdd.disabled = false;
+                btnAdd.innerHTML = originalBtnHtml;
+            }
+            const errorBox = document.getElementById('cartActionError');
+            if (errorBox) {
+                errorBox.textContent = data.message || 'Không thể thêm sản phẩm vào giỏ hàng.';
+                errorBox.classList.remove('d-none');
+            }
+            return;
+        }
+
         if (btnAdd) {
             btnAdd.disabled = false;
             btnAdd.innerHTML = '<i class="bi bi-check2 me-1"></i> Đã thêm vào giỏ!';
             setTimeout(() => {
                 btnAdd.innerHTML = originalBtnHtml;
             }, 1800);
-        }
-
-        if (data.requireLogin && data.redirectUrl) {
-            window.location.href = data.redirectUrl;
-            return;
         }
 
         if (data.success) {

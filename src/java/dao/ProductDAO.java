@@ -5,8 +5,11 @@ import model.Product;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Lớp ProductDAO: Đối tượng truy xuất dữ liệu sản phẩm (Data Access Object)
@@ -30,23 +33,25 @@ public class ProductDAO {
         String sql = "SELECT p.*, c.name AS category_name FROM products p " +
                      "LEFT JOIN categories c ON p.category_id = c.id ORDER BY p.id DESC";
         
-        // Quản lý kết nối và tài nguyên tự động bằng try-with-resources
-        try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            // Duyệt từng dòng kết quả trả về từ database
-            while (rs.next()) {
-                Product p = mapProduct(rs); // Chuyển đổi dòng dữ liệu ResultSet thành đối tượng Product
-                list.add(p);                 // Thêm vào danh sách trả về
+        try (Connection conn = DBContext.getConnection()) {
+            ProductStockDAO.ensureSchema(conn);
+            try (PreparedStatement ps = conn.prepareStatement(sql);
+                    ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapProduct(rs));
+                }
+            }
+            Map<Integer, Map<String, Integer>> stock = ProductStockDAO.loadAll(conn);
+            for (Product product : list) {
+                product.setStockBySize(stock.get(product.getId()));
             }
         } catch (Exception e) {
-            // Ghi nhận lỗi và thông báo chuyển sang sử dụng dữ liệu mẫu dự phòng
             System.err.println("⚠️ DB Query failed/not connected, loading Mock Products: " + e.getMessage());
         }
 
         // Nếu danh sách rỗng (database chưa kết nối hoặc chưa có dữ liệu), nạp danh sách mẫu
         if (list.isEmpty()) {
-            return getMockProducts();
+            return initializeMockStocks(getMockProducts());
         }
         return list;
     }
@@ -165,15 +170,20 @@ public class ProductDAO {
         String sql = "SELECT p.*, c.name AS category_name FROM products p " +
                      "LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = ?";
         
-        try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            // Truyền giá trị ID vào câu lệnh SQL
-            ps.setInt(1, id);
-            try (ResultSet rs = ps.executeQuery()) {
-                // Nếu tìm thấy bản ghi, chuyển đổi thành Product và trả về ngay
-                if (rs.next()) {
-                    return mapProduct(rs);
+        try (Connection conn = DBContext.getConnection()) {
+            ProductStockDAO.ensureSchema(conn);
+            Product product = null;
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setInt(1, id);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        product = mapProduct(rs);
+                    }
                 }
+            }
+            if (product != null) {
+                product.setStockBySize(ProductStockDAO.loadForProduct(conn, id));
+                return product;
             }
         } catch (Exception e) {
             System.err.println("⚠️ DB Query failed: " + e.getMessage());
@@ -181,9 +191,14 @@ public class ProductDAO {
 
         // Tìm trong dữ liệu mẫu nếu database không phản hồi
         for (Product p : getMockProducts()) {
-            if (p.getId() == id) return p;
+            if (p.getId() == id) {
+                initializeMockStock(p);
+                return p;
+            }
         }
-        return getMockProducts().get(0);
+        Product fallback = getMockProducts().get(0);
+        initializeMockStock(fallback);
+        return fallback;
     }
 
     /**
@@ -192,26 +207,89 @@ public class ProductDAO {
      * @return true nếu thêm thành công (>0 dòng bị tác động), ngược lại false
      */
     public boolean insertProduct(Product p) {
-        String sql = "INSERT INTO products (name, description, price, sale_price, quantity, image, size, color, category_id, is_featured) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            // Gán lần lượt các thuộc tính vào dấu hỏi chấm tương ứng
-            ps.setString(1, p.getName());          // Tên sản phẩm
-            ps.setString(2, p.getDescription());   // Mô tả chi tiết
-            ps.setDouble(3, p.getPrice());         // Giá gốc
-            ps.setDouble(4, p.getSalePrice());     // Giá khuyến mãi
-            ps.setInt(5, p.getQuantity());         // Số lượng tồn kho
-            ps.setString(6, p.getImage());         // Link ảnh đại diện
-            ps.setString(7, p.getSize());          // Danh sách kích thước (size)
-            ps.setString(8, p.getColor());         // Danh sách màu sắc
-            ps.setInt(9, p.getCategoryId());       // Mã danh mục
-            ps.setBoolean(10, p.isIsFeatured());   // Cờ nổi bật (true/false)
-            return ps.executeUpdate() > 0;         // Trả về true nếu thực thi ghi vào database thành công
-        } catch (Exception e) {
-            e.printStackTrace();
+        return insertProduct(p, distributeStock(
+                p.getQuantity(), ProductStockDAO.parseSizes(p.getSize())));
+    }
+
+    public boolean insertProduct(Product p, Map<String, Integer> stockBySize) {
+        if (!matchesProductSizes(p.getSize(), stockBySize)) {
+            return false;
         }
-        return false;
+        p.setQuantity(sumStock(stockBySize));
+        String sql = "INSERT INTO products (name, description, price, sale_price, quantity, image, size, color, category_id, is_featured) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = DBContext.getConnection()) {
+            ProductStockDAO.ensureSchema(conn);
+            conn.setAutoCommit(false);
+            try {
+                try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                    ps.setString(1, p.getName());
+                    ps.setString(2, p.getDescription());
+                    ps.setDouble(3, p.getPrice());
+                    ps.setDouble(4, p.getSalePrice());
+                    ps.setInt(5, p.getQuantity());
+                    ps.setString(6, p.getImage());
+                    ps.setString(7, p.getSize());
+                    ps.setString(8, p.getColor());
+                    ps.setInt(9, p.getCategoryId());
+                    ps.setBoolean(10, p.isIsFeatured());
+                    ps.executeUpdate();
+                    try (ResultSet keys = ps.getGeneratedKeys()) {
+                        if (!keys.next()) {
+                            conn.rollback();
+                            return false;
+                        }
+                        p.setId(keys.getInt(1));
+                    }
+                }
+                ProductStockDAO.insertForProduct(conn, p.getId(), stockBySize);
+                conn.commit();
+                return true;
+            } catch (Exception e) {
+                rollback(conn);
+                throw e;
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ Product insert failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean updateSizeStock(int productId, Map<String, Integer> stockBySize) {
+        if (stockBySize == null || stockBySize.isEmpty()
+                || stockBySize.values().stream().anyMatch(quantity -> quantity == null || quantity < 0)) {
+            return false;
+        }
+        try (Connection conn = DBContext.getConnection()) {
+            ProductStockDAO.ensureSchema(conn);
+            conn.setAutoCommit(false);
+            try {
+                String productSizes;
+                try (PreparedStatement ps = conn.prepareStatement("SELECT size FROM products WHERE id = ?")) {
+                    ps.setInt(1, productId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            conn.rollback();
+                            return false;
+                        }
+                        productSizes = rs.getString("size");
+                    }
+                }
+                if (!matchesProductSizes(productSizes, stockBySize)) {
+                    conn.rollback();
+                    return false;
+                }
+                ProductStockDAO.updateForProduct(conn, productId, stockBySize);
+                conn.commit();
+                return true;
+            } catch (Exception e) {
+                rollback(conn);
+                throw e;
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ Product size stock update failed: " + e.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -220,26 +298,47 @@ public class ProductDAO {
      * @return true nếu cập nhật thành công, ngược lại false
      */
     public boolean updateProduct(Product p) {
-        String sql = "UPDATE products SET name=?, description=?, price=?, sale_price=?, quantity=?, image=?, size=?, color=?, category_id=?, is_featured=? WHERE id=?";
-        try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            // Gán các giá trị mới cần cập nhật
-            ps.setString(1, p.getName());
-            ps.setString(2, p.getDescription());
-            ps.setDouble(3, p.getPrice());
-            ps.setDouble(4, p.getSalePrice());
-            ps.setInt(5, p.getQuantity());
-            ps.setString(6, p.getImage());
-            ps.setString(7, p.getSize());
-            ps.setString(8, p.getColor());
-            ps.setInt(9, p.getCategoryId());
-            ps.setBoolean(10, p.isIsFeatured());
-            ps.setInt(11, p.getId());              // ID sản phẩm cần sửa (điều kiện WHERE)
-            return ps.executeUpdate() > 0;
-        } catch (Exception e) {
-            e.printStackTrace();
+        return updateProduct(p, distributeStock(
+                p.getQuantity(), ProductStockDAO.parseSizes(p.getSize())));
+    }
+
+    public boolean updateProduct(Product p, Map<String, Integer> stockBySize) {
+        if (!matchesProductSizes(p.getSize(), stockBySize)) {
+            return false;
         }
-        return false;
+        String sql = "UPDATE products SET name=?, description=?, price=?, sale_price=?, quantity=?, image=?, size=?, color=?, category_id=?, is_featured=? WHERE id=?";
+        try (Connection conn = DBContext.getConnection()) {
+            ProductStockDAO.ensureSchema(conn);
+            conn.setAutoCommit(false);
+            try {
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setString(1, p.getName());
+                    ps.setString(2, p.getDescription());
+                    ps.setDouble(3, p.getPrice());
+                    ps.setDouble(4, p.getSalePrice());
+                    ps.setInt(5, sumStock(stockBySize));
+                    ps.setString(6, p.getImage());
+                    ps.setString(7, p.getSize());
+                    ps.setString(8, p.getColor());
+                    ps.setInt(9, p.getCategoryId());
+                    ps.setBoolean(10, p.isIsFeatured());
+                    ps.setInt(11, p.getId());
+                    if (ps.executeUpdate() == 0) {
+                        conn.rollback();
+                        return false;
+                    }
+                }
+                ProductStockDAO.updateForProduct(conn, p.getId(), stockBySize);
+                conn.commit();
+                return true;
+            } catch (Exception e) {
+                rollback(conn);
+                throw e;
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ Product update failed: " + e.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -281,6 +380,64 @@ public class ProductDAO {
         p.setIsFeatured(rs.getBoolean("is_featured"));        // Cờ sản phẩm nổi bật
         p.setCreatedAt(rs.getTimestamp("created_at"));        // Thời gian tạo
         return p;
+    }
+
+    private boolean matchesProductSizes(String sizes, Map<String, Integer> stocks) {
+        if (stocks == null || stocks.isEmpty()
+                || stocks.values().stream().anyMatch(quantity -> quantity == null || quantity < 0)) {
+            return false;
+        }
+        List<String> expected = ProductStockDAO.parseSizes(sizes);
+        if (expected.size() != stocks.size()) {
+            return false;
+        }
+        for (String size : expected) {
+            boolean found = stocks.keySet().stream().anyMatch(key -> key.equalsIgnoreCase(size));
+            if (!found) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private int sumStock(Map<String, Integer> stocks) {
+        int total = 0;
+        for (Integer quantity : stocks.values()) {
+            total = Math.addExact(total, quantity);
+        }
+        return total;
+    }
+
+    private void rollback(Connection conn) {
+        try {
+            conn.rollback();
+        } catch (Exception e) {
+            System.err.println("⚠️ Product transaction rollback failed: " + e.getMessage());
+        }
+    }
+
+    private Map<String, Integer> distributeStock(int total, List<String> sizes) {
+        Map<String, Integer> stocks = new LinkedHashMap<>();
+        int safeTotal = Math.max(0, total);
+        int each = sizes.isEmpty() ? 0 : safeTotal / sizes.size();
+        int remainder = sizes.isEmpty() ? 0 : safeTotal % sizes.size();
+        for (int i = 0; i < sizes.size(); i++) {
+            stocks.put(sizes.get(i), each + (i < remainder ? 1 : 0));
+        }
+        return stocks;
+    }
+
+    private List<Product> initializeMockStocks(List<Product> products) {
+        for (Product product : products) {
+            initializeMockStock(product);
+        }
+        return products;
+    }
+
+    private void initializeMockStock(Product product) {
+        product.setStockBySize(distributeStock(
+                product.getQuantity(),
+                ProductStockDAO.parseSizes(product.getSize())));
     }
 
     /**

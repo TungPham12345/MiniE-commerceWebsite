@@ -12,7 +12,9 @@ import model.User;
 
 // Import thư viện danh sách và xử lý I/O
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 // Import các thư viện Servlet và Session
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -59,11 +61,13 @@ public class AdminProductController extends HttpServlet {
         String action = request.getParameter("action");
         if ("delete".equals(action)) {
             String idRaw = request.getParameter("id");
-            if (idRaw != null) {
-                try {
-                    int id = Integer.parseInt(idRaw);
-                    productDAO.deleteProduct(id);
-                } catch (Exception ignored) {}
+            try {
+                int id = Integer.parseInt(idRaw);
+                setProductMessage(request.getSession(), productDAO.deleteProduct(id)
+                        ? "Đã xóa sản phẩm."
+                        : "Không thể xóa sản phẩm.");
+            } catch (NumberFormatException e) {
+                setProductMessage(request.getSession(), "Mã sản phẩm không hợp lệ.");
             }
             response.sendRedirect(request.getContextPath() + "/admin/products");
             return;
@@ -96,63 +100,104 @@ public class AdminProductController extends HttpServlet {
 
         ProductDAO productDAO = new ProductDAO();
         String action = request.getParameter("action");
+        HttpSession session = request.getSession();
 
         if ("delete".equals(action)) {
-            String idRaw = request.getParameter("id");
-            if (idRaw != null) {
-                try {
-                    int id = Integer.parseInt(idRaw);
-                    productDAO.deleteProduct(id);
-                } catch (Exception ignored) {}
-            }
-            response.sendRedirect(request.getContextPath() + "/admin/products");
+            doGet(request, response);
             return;
         }
 
-        // 2. Đọc các trường thông tin sản phẩm nhập từ form
-        String idRaw = request.getParameter("id");
-        String name = request.getParameter("name");
-        String description = request.getParameter("description");
-        double price = 0;
-        double salePrice = 0;
-        int quantity = 0;
         try {
-            if (request.getParameter("price") != null) price = Double.parseDouble(request.getParameter("price"));
-            if (request.getParameter("salePrice") != null) salePrice = Double.parseDouble(request.getParameter("salePrice"));
-            if (request.getParameter("quantity") != null) quantity = Integer.parseInt(request.getParameter("quantity"));
-        } catch (Exception ignored) {}
+            if ("updateStock".equals(action)) {
+                int productId = Integer.parseInt(request.getParameter("id"));
+                Map<String, Integer> stockBySize = parseStockBySize(request);
+                boolean updated = productDAO.updateSizeStock(productId, stockBySize);
+                setProductMessage(session, updated
+                        ? "Đã cập nhật tồn kho theo size."
+                        : "Không thể cập nhật tồn kho. Hãy kiểm tra lại các size và số lượng.");
+            } else {
+                Product p = new Product();
+                p.setName(requiredParameter(request, "name"));
+                p.setDescription(request.getParameter("description"));
+                p.setPrice(Double.parseDouble(requiredParameter(request, "price")));
+                String salePrice = request.getParameter("salePrice");
+                p.setSalePrice(salePrice == null || salePrice.trim().isEmpty() ? 0 : Double.parseDouble(salePrice));
+                p.setImage(requiredParameter(request, "image"));
+                p.setSize(requiredParameter(request, "size"));
+                p.setColor(request.getParameter("color"));
+                p.setCategoryId(Integer.parseInt(requiredParameter(request, "categoryId")));
+                p.setIsFeatured("on".equals(request.getParameter("isFeatured"))
+                        || "1".equals(request.getParameter("isFeatured")));
 
-        String image = request.getParameter("image");
-        String size = request.getParameter("size");
-        String color = request.getParameter("color");
-        int categoryId = 1;
-        try {
-            if (request.getParameter("categoryId") != null) {
-                categoryId = Integer.parseInt(request.getParameter("categoryId"));
+                Map<String, Integer> stockBySize = parseStockBySize(request);
+                int totalQuantity = 0;
+                for (Integer quantity : stockBySize.values()) {
+                    totalQuantity = Math.addExact(totalQuantity, quantity);
+                }
+                p.setQuantity(totalQuantity);
+
+                boolean saved;
+                if ("add".equals(action)) {
+                    saved = productDAO.insertProduct(p, stockBySize);
+                } else if ("edit".equals(action)) {
+                    p.setId(Integer.parseInt(requiredParameter(request, "id")));
+                    saved = productDAO.updateProduct(p, stockBySize);
+                } else {
+                    throw new IllegalArgumentException("Thao tác không hợp lệ.");
+                }
+                setProductMessage(session, saved
+                        ? "Đã lưu sản phẩm và tồn kho theo size."
+                        : "Không thể lưu sản phẩm. Hãy kiểm tra lại thông tin và số lượng từng size.");
             }
-        } catch (Exception ignored) {}
-
-        boolean isFeatured = "on".equals(request.getParameter("isFeatured")) || "1".equals(request.getParameter("isFeatured"));
-
-        Product p = new Product();
-        p.setName(name);
-        p.setDescription(description);
-        p.setPrice(price);
-        p.setSalePrice(salePrice);
-        p.setQuantity(quantity);
-        p.setImage(image);
-        p.setSize(size);
-        p.setColor(color);
-        p.setCategoryId(categoryId);
-        p.setIsFeatured(isFeatured);
-
-        if ("add".equals(action)) {
-            productDAO.insertProduct(p);
-        } else if ("edit".equals(action) && idRaw != null && !idRaw.isEmpty()) {
-            p.setId(Integer.parseInt(idRaw));
-            productDAO.updateProduct(p);
+        } catch (IllegalArgumentException e) {
+            setProductMessage(session, e.getMessage());
+        } catch (ArithmeticException e) {
+            setProductMessage(session, "Tổng số lượng tồn kho vượt giới hạn cho phép.");
         }
 
         response.sendRedirect(request.getContextPath() + "/admin/products");
+    }
+
+    private Map<String, Integer> parseStockBySize(HttpServletRequest request) {
+        String[] sizes = request.getParameterValues("stockSize");
+        String[] quantities = request.getParameterValues("stockQuantity");
+        if (sizes == null || quantities == null || sizes.length == 0 || sizes.length != quantities.length) {
+            throw new IllegalArgumentException("Vui lòng nhập tồn kho cho từng size.");
+        }
+        Map<String, Integer> stocks = new LinkedHashMap<>();
+        for (int i = 0; i < sizes.length; i++) {
+            String size = sizes[i] != null ? sizes[i].trim() : "";
+            if (size.isEmpty()) {
+                throw new IllegalArgumentException("Size không được để trống.");
+            }
+            int quantity;
+            try {
+                quantity = Integer.parseInt(quantities[i]);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Số lượng tồn kho phải là số nguyên không âm.");
+            }
+            if (quantity < 0) {
+                throw new IllegalArgumentException("Số lượng tồn kho không được âm.");
+            }
+            for (String existingSize : stocks.keySet()) {
+                if (existingSize.equalsIgnoreCase(size)) {
+                    throw new IllegalArgumentException("Không được nhập trùng size " + size + ".");
+                }
+            }
+            stocks.put(size, quantity);
+        }
+        return stocks;
+    }
+
+    private String requiredParameter(HttpServletRequest request, String name) {
+        String value = request.getParameter(name);
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng nhập đầy đủ thông tin bắt buộc.");
+        }
+        return value.trim();
+    }
+
+    private void setProductMessage(HttpSession session, String message) {
+        session.setAttribute("adminProductMessage", message);
     }
 }

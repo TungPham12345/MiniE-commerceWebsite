@@ -17,6 +17,8 @@
             cartTotal += item.getTotalMoney();
         }
     }
+    String cartError = (String) session.getAttribute("cartError");
+    if (cartError != null) { session.removeAttribute("cartError"); }
     
     NumberFormat fmt = NumberFormat.getInstance(new Locale("vi", "VN"));
 %>
@@ -29,6 +31,10 @@
         <h3 class="fw-bold text-uppercase m-0">Giỏ Hàng Của Bạn</h3>
     </div>
 
+    <% if (cartError != null) { %>
+        <div class="alert alert-warning" role="alert"><%= cartError %></div>
+    <% } %>
+
     <% if (cart != null && !cart.isEmpty()) { %>
         <div class="bg-white border p-4 shadow-sm mb-5">
             <!-- Header Table -->
@@ -40,11 +46,25 @@
             </div>
 
             <!-- Cart Items Rows -->
-            <% for (CartItem item : cart) { %>
+            <% for (CartItem item : cart) {
+                    int quantityInOtherSameSizeItems = 0;
+                    for (CartItem other : cart) {
+                        if (other != item
+                                && other.getProduct().getId() == item.getProduct().getId()
+                                && other.getSize() != null
+                                && item.getSize() != null
+                                && other.getSize().equalsIgnoreCase(item.getSize())) {
+                            quantityInOtherSameSizeItems += other.getQuantity();
+                        }
+                    }
+                    int maxForThisCartLine = Math.max(0,
+                            item.getProduct().getStockForSize(item.getSize()) - quantityInOtherSameSizeItems);
+            %>
                 <div class="cart-item-row-custom px-3" 
                      data-price="<%= item.getProduct().getEffectivePrice() %>" 
                      data-id="<%= item.getProduct().getId() %>" 
-                     data-size="<%= item.getSize() %>">
+                     data-size="<%= item.getSize() %>"
+                     data-color="<%= item.getColor() %>">
                     
                     <!-- Product Info -->
                     <div style="width: 45%;" class="d-flex align-items-center gap-4">
@@ -60,6 +80,9 @@
                         <div>
                             <h6 class="fw-bold text-uppercase m-0 text-dark" style="letter-spacing: 0.5px;"><%= item.getProduct().getName() %></h6>
                             <div class="text-secondary small mt-1">Size: <span class="fw-bold text-dark"><%= item.getSize() %></span></div>
+                            <div class="<%= item.getProduct().getStockForSize(item.getSize()) > 0 ? "text-success" : "text-danger" %> small mt-1">
+                                Size này còn <strong><%= item.getProduct().getStockForSize(item.getSize()) %></strong> sản phẩm
+                            </div>
                             <div class="fw-bold text-danger mt-1"><%= fmt.format(item.getProduct().getEffectivePrice()) %>đ</div>
                         </div>
                     </div>
@@ -67,9 +90,9 @@
                     <!-- Quantity Stepper Voi Cap Nhat Real-Time Tức Thì -->
                     <div style="width: 25%;" class="d-flex justify-content-center">
                         <div class="quantity-stepper">
-                            <button type="button" onclick="updateCartQuantity(this, -1, <%= item.getProduct().getId() %>, '<%= item.getSize() %>', <%= item.getProduct().getEffectivePrice() %>)">-</button>
-                            <input type="number" class="qty-input" value="<%= item.getQuantity() %>" min="1" readonly>
-                            <button type="button" onclick="updateCartQuantity(this, 1, <%= item.getProduct().getId() %>, '<%= item.getSize() %>', <%= item.getProduct().getEffectivePrice() %>)">+</button>
+                            <button type="button" onclick="updateCartQuantity(this, -1, <%= item.getProduct().getId() %>, <%= item.getProduct().getEffectivePrice() %>)">-</button>
+                            <input type="number" class="qty-input" value="<%= item.getQuantity() %>" min="1" max="<%= maxForThisCartLine %>" readonly>
+                            <button type="button" onclick="updateCartQuantity(this, 1, <%= item.getProduct().getId() %>, <%= item.getProduct().getEffectivePrice() %>)" <%= item.getQuantity() >= maxForThisCartLine ? "disabled" : "" %>>+</button>
                         </div>
                     </div>
 
@@ -84,6 +107,7 @@
                             <input type="hidden" name="action" value="remove">
                             <input type="hidden" name="productId" value="<%= item.getProduct().getId() %>">
                             <input type="hidden" name="size" value="<%= item.getSize() %>">
+                            <input type="hidden" name="color" value="<%= item.getColor() %>">
                             <button type="submit" class="btn border-0 p-0 fs-4 text-secondary hover-danger">
                                 ✖
                             </button>
@@ -118,12 +142,13 @@
 </div>
 
 <script>
-function updateCartQuantity(btn, delta, productId, size, unitPrice) {
+function updateCartQuantity(btn, delta, productId, unitPrice) {
     var row = btn.closest('.cart-item-row-custom');
     var input = row.querySelector('.qty-input');
     var currentQty = parseInt(input.value) || 1;
     var newQty = currentQty + delta;
-    
+    var maxQty = parseInt(input.max) || 0;
+    if (newQty > maxQty) return;
     if (newQty < 1) return;
     input.value = newQty;
     
@@ -138,7 +163,8 @@ function updateCartQuantity(btn, delta, productId, size, unitPrice) {
     var formData = new URLSearchParams();
     formData.append('action', 'update');
     formData.append('productId', productId);
-    formData.append('size', size);
+    formData.append('size', row.dataset.size);
+    formData.append('color', row.dataset.color);
     formData.append('quantity', newQty);
     
     fetch('${pageContext.request.contextPath}/cart', {
@@ -148,6 +174,10 @@ function updateCartQuantity(btn, delta, productId, size, unitPrice) {
             'X-Requested-With': 'XMLHttpRequest'
         },
         body: formData.toString()
+    }).then(function(response) {
+        if (!response.ok) {
+            window.location.reload();
+        }
     }).catch(function(err) {
         console.log('Syncing cart error:', err);
     });

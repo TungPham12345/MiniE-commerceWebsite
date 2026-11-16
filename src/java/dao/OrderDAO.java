@@ -9,7 +9,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Lớp OrderDAO: Quản lý truy xuất và lưu trữ dữ liệu Đơn hàng (orders) và Chi
@@ -22,83 +24,84 @@ import java.util.List;
 public class OrderDAO {
 
     public int createOrder(Order order, List<CartItem> cartItems) {
-        String sqlOrder = "INSERT INTO orders (user_id, customer_name, email, phone, address, note, total_money, payment_method, status) "
-                +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        // Câu lệnh SQL thêm từng sản phẩm chi tiết vào bảng order_details
         String sqlDetail = "INSERT INTO order_details (order_id, product_id, price, quantity, size, color, total_money) "
-                +
-                "VALUES (?, ?, ?, ?, ?, ?, ?)";
+                + "VALUES (?, ?, ?, ?, ?, ?, ?)";
         Connection conn = null;
         try {
-            // Mở kết nối tới cơ sở dữ liệu
             conn = DBContext.getConnection();
-            // Tắt chế độ Auto-commit để bắt đầu Transaction thủ công
+            ensureStockTrackingColumn(conn);
+            ProductStockDAO.ensureSchema(conn);
             conn.setAutoCommit(false);
 
-            // ================= 1. Thêm Đơn Hàng Chính (Order) =================
-            // Sử dụng RETURN_GENERATED_KEYS để lấy ID tự tăng của bản ghi vừa chèn
-            PreparedStatement psOrder = conn.prepareStatement(sqlOrder, Statement.RETURN_GENERATED_KEYS);
-            // Kiểm tra xem đơn hàng có thuộc về tài khoản đã đăng nhập không
-            if (order.getUserId() != null && order.getUserId() > 0) {
-                psOrder.setInt(1, order.getUserId());
-            } else {
-                psOrder.setNull(1, java.sql.Types.INTEGER); // Đặt NULL nếu là khách vãng lai mua hàng
+            if (cartItems == null || cartItems.isEmpty()) {
+                conn.rollback();
+                return -1;
             }
-            psOrder.setString(2, order.getCustomerName()); // Họ tên khách hàng
-            psOrder.setString(3, order.getEmail()); // Email liên hệ
-            psOrder.setString(4, order.getPhone()); // Số điện thoại
-            psOrder.setString(5, order.getAddress()); // Địa chỉ nhận hàng
-            psOrder.setString(6, order.getNote()); // Ghi chú đơn hàng
-            psOrder.setDouble(7, order.getTotalMoney()); // Tổng tiền thanh toán
-            psOrder.setString(8, order.getPaymentMethod()); // Phương thức thanh toán (COD, v.v.)
-            psOrder.setString(9, "PENDING"); // Trạng thái ban đầu: PENDING (Chờ xử lý)
-
-            // Thực thi chèn đơn hàng
-            psOrder.executeUpdate();
-
-            // Lấy mã ID tự tăng vừa sinh ra từ cơ sở dữ liệu
-            ResultSet rsKeys = psOrder.getGeneratedKeys();
-            int orderId = 1000 + mockOrders.size() + 1;
-            if (rsKeys.next()) {
-                orderId = rsKeys.getInt(1); // Lấy khóa chính (id đơn hàng mới)
-            }
-            order.setId(orderId);
-
-            // 2. Insert OrderDetails
-            if (orderId > 0 && cartItems != null) {
-                PreparedStatement psDetail = conn.prepareStatement(sqlDetail);
-                for (CartItem item : cartItems) {
-                    psDetail.setInt(1, orderId);
-                    psDetail.setInt(2, item.getProduct().getId());
-                    psDetail.setDouble(3, item.getProduct().getEffectivePrice());
-                    psDetail.setInt(4, item.getQuantity());
-                    psDetail.setString(5, item.getSize() != null ? item.getSize() : "Freesize");
-                    psDetail.setString(6, item.getColor() != null ? item.getColor() : "Mặc định");
-                    psDetail.setDouble(7, item.getTotalPrice());
-                    psDetail.addBatch();
+            for (CartItem item : cartItems) {
+                if (item == null || item.getProduct() == null || item.getQuantity() <= 0) {
+                    throw new IllegalArgumentException("Thông tin sản phẩm trong giỏ hàng không hợp lệ.");
                 }
-                psDetail.executeBatch(); // Thực thi lưu toàn bộ chi tiết đơn hàng
+                if (!ProductStockDAO.adjust(
+                        conn,
+                        item.getProduct().getId(),
+                        item.getSize(),
+                        item.getQuantity(),
+                        false)) {
+                    throw new StockUnavailableException("Size " + item.getSize() + " không đủ hàng trong kho.");
+                }
             }
 
-            conn.commit(); // Commit transaction
-            return orderId;
+            String sqlOrder = "INSERT INTO orders (user_id, customer_name, email, phone, address, note, total_money, payment_method, status, stock_deducted) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
+            try (PreparedStatement psOrder = conn.prepareStatement(sqlOrder, Statement.RETURN_GENERATED_KEYS)) {
+                if (order.getUserId() != null && order.getUserId() > 0) {
+                    psOrder.setInt(1, order.getUserId());
+                } else {
+                    psOrder.setNull(1, java.sql.Types.INTEGER);
+                }
+                psOrder.setString(2, order.getCustomerName());
+                psOrder.setString(3, order.getEmail());
+                psOrder.setString(4, order.getPhone());
+                psOrder.setString(5, order.getAddress());
+                psOrder.setString(6, order.getNote());
+                psOrder.setDouble(7, order.getTotalMoney());
+                psOrder.setString(8, order.getPaymentMethod());
+                psOrder.setString(9, "PENDING");
+                psOrder.executeUpdate();
+
+                int orderId;
+                try (ResultSet rsKeys = psOrder.getGeneratedKeys()) {
+                    if (!rsKeys.next()) {
+                        throw new IllegalStateException("Không lấy được mã đơn hàng vừa tạo.");
+                    }
+                    orderId = rsKeys.getInt(1);
+                }
+                order.setId(orderId);
+
+                try (PreparedStatement psDetail = conn.prepareStatement(sqlDetail)) {
+                    for (CartItem item : cartItems) {
+                        psDetail.setInt(1, orderId);
+                        psDetail.setInt(2, item.getProduct().getId());
+                        psDetail.setDouble(3, item.getProduct().getEffectivePrice());
+                        psDetail.setInt(4, item.getQuantity());
+                        psDetail.setString(5, item.getSize() != null ? item.getSize() : "Freesize");
+                        psDetail.setString(6, item.getColor() != null ? item.getColor() : "Mặc định");
+                        psDetail.setDouble(7, item.getTotalPrice());
+                        psDetail.addBatch();
+                    }
+                    psDetail.executeBatch();
+                }
+                conn.commit();
+                return orderId;
+            }
+        } catch (StockUnavailableException e) {
+            rollback(conn);
+            throw e;
         } catch (Exception e) {
-            // Nếu có bất kỳ lỗi nào xảy ra, hoàn tác lại toàn bộ (Rollback) để không bị dữ
-            // liệu rác
-            if (conn != null) {
-                try {
-                    conn.rollback();
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            }
-            System.err.println("⚠️ DB Order Creation failed, adding to mock orders: " + e.getMessage());
-            order.setId(1000 + mockOrders.size() + 1);
-            mockOrders.add(0, order);
-            return order.getId();
+            rollback(conn);
+            System.err.println("⚠️ DB Order Creation failed: " + e.getMessage());
+            return -1;
         } finally {
-            // Đảm bảo bật lại auto-commit và đóng kết nối giải phóng tài nguyên
             if (conn != null) {
                 try {
                     conn.setAutoCommit(true);
@@ -111,6 +114,31 @@ public class OrderDAO {
     }
 
     private static final List<Order> mockOrders = new ArrayList<>();
+
+    private static class StockUnavailableException extends RuntimeException {
+        private StockUnavailableException(String message) {
+            super(message);
+        }
+    }
+
+    private void ensureStockTrackingColumn(Connection conn) throws Exception {
+        String sql = "IF COL_LENGTH('dbo.orders', 'stock_deducted') IS NULL "
+                + "ALTER TABLE dbo.orders ADD stock_deducted BIT NOT NULL "
+                + "CONSTRAINT DF_orders_stock_deducted DEFAULT (0)";
+        try (Statement statement = conn.createStatement()) {
+            statement.execute(sql);
+        }
+    }
+
+    private void rollback(Connection conn) {
+        if (conn != null) {
+            try {
+                conn.rollback();
+            } catch (Exception e) {
+                System.err.println("⚠️ Database rollback failed: " + e.getMessage());
+            }
+        }
+    }
 
     /**
      * Lấy toàn bộ danh sách đơn hàng để hiển thị cho trang quản trị (Admin Dashboard)
@@ -203,6 +231,13 @@ public class OrderDAO {
      * @return true nếu cập nhật thành công, ngược lại false
      */
     public boolean updateOrderStatus(int orderId, String status) {
+        if ("CANCELLED".equalsIgnoreCase(status)) {
+            return transitionOrderStock(orderId, "CANCELLED");
+        }
+        if ("PENDING".equalsIgnoreCase(status)) {
+            return transitionOrderStock(orderId, "PENDING");
+        }
+
         String sql = "UPDATE orders SET status = ? WHERE id = ?";
         try (Connection conn = DBContext.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -224,6 +259,116 @@ public class OrderDAO {
         }
 
         // Nếu cập nhật database không tìm thấy dòng (hoặc lỗi kết nối), cập nhật trong danh sách mẫu
+        for (Order o : mockOrders) {
+            if (o.getId() == orderId) {
+                o.setStatus(status);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean transitionOrderStock(int orderId, String newStatus) {
+        Connection conn = null;
+        try {
+            conn = DBContext.getConnection();
+            ensureStockTrackingColumn(conn);
+            ProductStockDAO.ensureSchema(conn);
+            conn.setAutoCommit(false);
+            String currentStatus;
+            boolean stockDeducted;
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT status, stock_deducted FROM orders WITH (UPDLOCK, ROWLOCK) WHERE id = ?")) {
+                ps.setInt(1, orderId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        conn.rollback();
+                        return updateMockOrderStatus(orderId, newStatus);
+                    }
+                    currentStatus = rs.getString("status");
+                    stockDeducted = rs.getBoolean("stock_deducted");
+                }
+            }
+
+            if ("CANCELLED".equals(newStatus)) {
+                if (!"PENDING".equalsIgnoreCase(currentStatus)
+                        && !"UNPAID".equalsIgnoreCase(currentStatus)
+                        && !"CHO_XU_LY".equalsIgnoreCase(currentStatus)) {
+                    conn.rollback();
+                    return false;
+                }
+                if (stockDeducted) {
+                    adjustOrderInventory(conn, orderId, true);
+                }
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE orders SET status = 'CANCELLED', stock_deducted = 0 WHERE id = ?")) {
+                    ps.setInt(1, orderId);
+                    if (ps.executeUpdate() == 0) {
+                        conn.rollback();
+                        return false;
+                    }
+                }
+            } else {
+                if ("CANCELLED".equalsIgnoreCase(currentStatus) && !stockDeducted) {
+                    adjustOrderInventory(conn, orderId, false);
+                    stockDeducted = true;
+                }
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE orders SET status = 'PENDING', stock_deducted = ? WHERE id = ?")) {
+                    ps.setBoolean(1, stockDeducted);
+                    ps.setInt(2, orderId);
+                    if (ps.executeUpdate() == 0) {
+                        conn.rollback();
+                        return false;
+                    }
+                }
+            }
+            conn.commit();
+            updateMockOrderStatus(orderId, newStatus);
+            return true;
+        } catch (StockUnavailableException e) {
+            rollback(conn);
+            System.err.println("⚠️ Order status update rejected: " + e.getMessage());
+            return false;
+        } catch (Exception e) {
+            rollback(conn);
+            System.err.println("⚠️ Order stock status update failed: " + e.getMessage());
+            return false;
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (Exception e) {
+                    System.err.println("⚠️ Closing order status connection failed: " + e.getMessage());
+                }
+            }
+        }
+    }
+
+    private void adjustOrderInventory(Connection conn, int orderId, boolean restore) throws Exception {
+        String sql = "SELECT product_id, size, SUM(quantity) AS quantity FROM order_details "
+                + "WHERE order_id = ? GROUP BY product_id, size";
+        Map<Integer, Map<String, Integer>> inventory = new LinkedHashMap<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    inventory.computeIfAbsent(rs.getInt("product_id"), id -> new LinkedHashMap<>())
+                            .put(rs.getString("size"), rs.getInt("quantity"));
+                }
+            }
+        }
+        for (Map.Entry<Integer, Map<String, Integer>> product : inventory.entrySet()) {
+            for (Map.Entry<String, Integer> size : product.getValue().entrySet()) {
+                if (!ProductStockDAO.adjust(conn, product.getKey(), size.getKey(), size.getValue(), restore)) {
+                    throw new IllegalStateException("Không thể cập nhật tồn kho size " + size.getKey() + ".");
+                }
+            }
+        }
+    }
+
+    private boolean updateMockOrderStatus(int orderId, String status) {
         for (Order o : mockOrders) {
             if (o.getId() == orderId) {
                 o.setStatus(status);
@@ -373,7 +518,12 @@ public class OrderDAO {
         Connection conn = null;
         try {
             conn = DBContext.getConnection();
+            ensureStockTrackingColumn(conn);
+            ProductStockDAO.ensureSchema(conn);
             conn.setAutoCommit(false);
+            if (isReservedPendingOrder(conn, orderId)) {
+                adjustOrderInventory(conn, orderId, true);
+            }
             try (PreparedStatement psDetails = conn.prepareStatement(sqlDetails)) {
                 psDetails.setInt(1, orderId);
                 psDetails.executeUpdate();
@@ -409,7 +559,28 @@ public class OrderDAO {
         Connection conn = null;
         try {
             conn = DBContext.getConnection();
+            ensureStockTrackingColumn(conn);
+            ProductStockDAO.ensureSchema(conn);
             conn.setAutoCommit(false);
+            String stockSql = "SELECT od.product_id, od.size, SUM(od.quantity) AS quantity "
+                    + "FROM order_details od JOIN orders o ON o.id = od.order_id "
+                    + "WHERE o.stock_deducted = 1 AND o.status IN ('PENDING', 'UNPAID', 'CHO_XU_LY') "
+                    + "GROUP BY od.product_id, od.size";
+            Map<Integer, Map<String, Integer>> inventory = new LinkedHashMap<>();
+            try (Statement stockStatement = conn.createStatement();
+                    ResultSet rs = stockStatement.executeQuery(stockSql)) {
+                while (rs.next()) {
+                    inventory.computeIfAbsent(rs.getInt("product_id"), id -> new LinkedHashMap<>())
+                            .put(rs.getString("size"), rs.getInt("quantity"));
+                }
+            }
+            for (Map.Entry<Integer, Map<String, Integer>> product : inventory.entrySet()) {
+                for (Map.Entry<String, Integer> size : product.getValue().entrySet()) {
+                    if (!ProductStockDAO.adjust(conn, product.getKey(), size.getKey(), size.getValue(), true)) {
+                        throw new IllegalStateException("Không thể hoàn kho size " + size.getKey() + ".");
+                    }
+                }
+            }
             try (Statement st = conn.createStatement()) {
                 st.executeUpdate(sqlDetails);
                 st.executeUpdate(sqlOrders);
@@ -430,6 +601,22 @@ public class OrderDAO {
         } finally {
             if (conn != null) {
                 try { conn.setAutoCommit(true); conn.close(); } catch (Exception ex) {}
+            }
+        }
+    }
+
+    private boolean isReservedPendingOrder(Connection conn, int orderId) throws Exception {
+        String sql = "SELECT status, stock_deducted FROM orders WITH (UPDLOCK, ROWLOCK) WHERE id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next() || !rs.getBoolean("stock_deducted")) {
+                    return false;
+                }
+                String status = rs.getString("status");
+                return "PENDING".equalsIgnoreCase(status)
+                        || "UNPAID".equalsIgnoreCase(status)
+                        || "CHO_XU_LY".equalsIgnoreCase(status);
             }
         }
     }
