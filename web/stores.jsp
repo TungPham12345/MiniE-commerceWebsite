@@ -14,16 +14,16 @@
 <div class="container my-4">
     <!-- Header -->
     <div class="bg-white p-4 rounded-4 border mb-4 shadow-sm text-center">
-        <span class="badge bg-danger px-3 py-2 rounded-pill fs-6 mb-2"><i class="bi bi-geo-alt-fill me-1"></i> Hệ Thống Cửa Hàng</span>
-        <h2 class="fw-extrabold text-uppercase m-0">Hệ Thống 3 Chi Nhánh HighFashion Tại Hà Nội</h2>
-        <p class="text-secondary mt-2 mb-0">Trải nghiệm mua sắm trực tiếp tại chuỗi showroom thời trang cao cấp tại thủ đô Hà Nội</p>
+        <span class="badge bg-danger px-3 py-2 rounded-pill fs-6 mb-2"><i class="bi bi-geo-alt-fill me-1"></i> Cửa Hàng HighFashion</span>
+        <h2 class="fw-extrabold text-uppercase m-0">Cửa Hàng HighFashion <%= stores != null && !stores.isEmpty() && stores.get(0).getCity() != null ? stores.get(0).getCity() : "" %></h2>
+        <p class="text-secondary mt-2 mb-0">Thông tin địa chỉ, giờ hoạt động và chỉ đường đến cửa hàng hiện tại</p>
     </div>
 
     <div class="row g-4">
         <!-- Sidebar Danh Sách Chi Nhánh Cửa Hàng -->
         <div class="col-lg-4">
             <div class="bg-white border rounded-4 p-3 shadow-sm" style="max-height: 600px; overflow-y: auto;">
-                <h5 class="fw-bold mb-3 px-2 border-bottom pb-2"><i class="bi bi-buildings text-danger me-2"></i> Chi Nhánh Hà Nội (<%= stores != null ? stores.size() : 0 %>)</h5>
+                <h5 class="fw-bold mb-3 px-2 border-bottom pb-2"><i class="bi bi-buildings text-danger me-2"></i> Cửa Hàng Hiện Tại</h5>
                 
                 <% if (stores != null && !stores.isEmpty()) { 
                     for (int i = 0; i < stores.size(); i++) {
@@ -75,8 +75,12 @@ var map;
 var storeMarkers = {};
 
 document.addEventListener("DOMContentLoaded", function() {
-    // Khởi tạo bản đồ trung tâm Hà Nội
+    // Khởi tạo bản đồ tại vị trí cửa hàng hiện tại
+    <% if (stores != null && !stores.isEmpty()) { %>
+    map = L.map('map').setView([<%= stores.get(0).getLatitude() %>, <%= stores.get(0).getLongitude() %>], 15);
+    <% } else { %>
     map = L.map('map').setView([21.0285, 105.8342], 13);
+    <% } %>
 
     // Nạp gạch tile Esri World Street Map sắc nét, đầy đủ địa danh tiếng Việt
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
@@ -128,7 +132,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
     group.addTo(map);
     if (group.getLayers().length > 0) {
-        map.fitBounds(group.getBounds().pad(0.25));
+        <% if (stores != null && !stores.isEmpty()) { %>
+        map.setView([<%= stores.get(0).getLatitude() %>, <%= stores.get(0).getLongitude() %>], 15);
+        <% } %>
         if (firstStoreId && storeMarkers[firstStoreId]) {
             setTimeout(function() {
                 storeMarkers[firstStoreId].openPopup();

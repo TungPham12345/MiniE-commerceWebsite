@@ -212,14 +212,24 @@
                                  data-stock="<%= remainingForSize %>" data-total-stock="<%= product.getStockForSize(sz) %>"
                                  onclick="selectSize('<%= sz %>', this)">
                                 <span><%= sz %></span>
-                                <small class="size-stock-count"><%= product.getStockForSize(sz) > 0
-                                        ? "Còn " + product.getStockForSize(sz)
-                                        : "Hết hàng" %></small>
                             </div>
                         <% } %>
                     </div>
 
                     <% if (currentUser == null || !currentUser.isAdmin()) { %>
+                    <div id="selectedSizeStock" class="selected-size-stock <%= product.getStockForSize(defaultSelectedSize) <= 0 ? "is-out-of-stock" : "" %>">
+                        <i class="bi bi-box-seam" aria-hidden="true"></i>
+                        <span id="selectedSizeStockText" aria-live="polite">
+                            <% if (product.getStockForSize(defaultSelectedSize) > 0) { %>
+                                Size <%= defaultSelectedSize %> còn <%= product.getStockForSize(defaultSelectedSize) %> trong kho
+                                <% if (defaultRemainingStock < product.getStockForSize(defaultSelectedSize)) { %>
+                                    (có thể thêm <%= defaultRemainingStock %>)
+                                <% } %>
+                            <% } else { %>
+                                Size <%= defaultSelectedSize %> đã hết hàng
+                            <% } %>
+                        </span>
+                    </div>
                     <% if (cartError != null) { %>
                         <div class="alert alert-warning py-2 mb-3" role="alert"><%= cartError %></div>
                     <% } %>
@@ -234,19 +244,6 @@
                                     <button type="button" aria-label="Tăng số lượng" onclick="changeQty(1)" <%= defaultRemainingStock <= 0 ? "disabled" : "" %>>+</button>
                                 </div>
                             </div>
-                            <span id="selectedSizeStock" class="selected-size-stock <%= product.getStockForSize(defaultSelectedSize) <= 0 ? "is-out-of-stock" : "" %>">
-                                <i class="bi bi-box-seam" aria-hidden="true"></i>
-                                <span id="selectedSizeStockText" aria-live="polite">
-                                    <% if (product.getStockForSize(defaultSelectedSize) > 0) { %>
-                                        Size <%= defaultSelectedSize %> còn <%= product.getStockForSize(defaultSelectedSize) %> trong kho
-                                        <% if (defaultRemainingStock < product.getStockForSize(defaultSelectedSize)) { %>
-                                            (có thể thêm <%= defaultRemainingStock %>)
-                                        <% } %>
-                                    <% } else { %>
-                                        Size <%= defaultSelectedSize %> đã hết hàng
-                                    <% } %>
-                                </span>
-                            </span>
                         </div>
                         <div class="purchase-actions">
                             <button type="button" id="addToCartBtn" class="btn-add-to-cart" onclick="submitToCart(false)" <%= defaultRemainingStock <= 0 ? "disabled" : "" %>>
@@ -438,29 +435,6 @@
                         </div>
                     </div>
 
-                    <!-- Thanh 3: Cửa hàng còn hàng -->
-                    <div class="info-accordion-item">
-                        <div class="info-accordion-header" data-bs-toggle="collapse" data-bs-target="#storeStockCollapse">
-                            <span>Cửa hàng còn hàng</span>
-                            <i class="bi bi-chevron-right fs-6"></i>
-                        </div>
-                        <div class="collapse" id="storeStockCollapse">
-                            <div class="info-accordion-body">
-                                <div class="d-flex flex-wrap gap-2 mb-2">
-                                    <% for (String sizeOption : currentSizes) { %>
-                                        <span class="badge <%= product.getStockForSize(sizeOption) > 0 ? "bg-success" : "bg-secondary" %>">
-                                            Size <%= sizeOption %>: <%= product.getStockForSize(sizeOption) %> còn
-                                        </span>
-                                    <% } %>
-                                </div>
-                                <div class="mt-2 pt-2 border-top">
-                                    <a href="${pageContext.request.contextPath}/stores" class="text-danger small fw-bold text-decoration-none">
-                                        <i class="bi bi-map-fill me-1"></i> Xem vị trí trên bản đồ hệ thống
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
             </div>

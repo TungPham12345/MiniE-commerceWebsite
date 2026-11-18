@@ -38,8 +38,21 @@ public class StoreListController extends HttpServlet {
 
         // Khởi tạo đối tượng StoreDAO để truy vấn danh sách showroom
         StoreDAO storeDAO = new StoreDAO();
-        // Lấy tất cả các chi nhánh cửa hàng từ CSDL
-        List<Store> stores = storeDAO.getAllStores();
+        // Show only the flagship store for now; retain other locations for future expansion.
+        List<Store> allStores = storeDAO.getAllStores();
+        Store currentStore = null;
+        if (allStores != null && !allStores.isEmpty()) {
+            currentStore = allStores.get(0);
+            for (Store store : allStores) {
+                if (store.isIsMain()) {
+                    currentStore = store;
+                    break;
+                }
+            }
+        }
+        List<Store> stores = currentStore != null
+                ? java.util.Collections.singletonList(currentStore)
+                : java.util.Collections.emptyList();
 
         // Đính kèm danh sách chi nhánh vào request để truyền sang file JSP
         request.setAttribute("stores", stores);

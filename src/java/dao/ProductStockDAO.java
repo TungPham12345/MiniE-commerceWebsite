@@ -5,8 +5,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public final class ProductStockDAO {
@@ -170,6 +172,21 @@ public final class ProductStockDAO {
     }
 
     public static void updateForProduct(Connection conn, int productId, Map<String, Integer> stocks) throws Exception {
+        if (stocks == null || stocks.isEmpty()) {
+            throw new IllegalArgumentException("At least one size stock entry is required.");
+        }
+        String placeholders = String.join(",", Collections.nCopies(stocks.size(), "?"));
+        String deleteSql = "DELETE FROM dbo.product_size_stock WHERE product_id = ? "
+                + "AND LOWER(LTRIM(RTRIM(size))) NOT IN (" + placeholders + ")";
+        try (PreparedStatement ps = conn.prepareStatement(deleteSql)) {
+            ps.setInt(1, productId);
+            int parameterIndex = 2;
+            for (String size : stocks.keySet()) {
+                ps.setString(parameterIndex++, size.trim().toLowerCase(Locale.ROOT));
+            }
+            ps.executeUpdate();
+        }
+
         String updateSql = "UPDATE dbo.product_size_stock SET quantity = ? WHERE product_id = ? AND size = ?";
         String insertSql = "INSERT INTO dbo.product_size_stock (product_id, size, quantity) VALUES (?, ?, ?)";
         for (Map.Entry<String, Integer> item : stocks.entrySet()) {
