@@ -85,39 +85,45 @@ public class MyOrdersController extends HttpServlet {
             }
         }
 
-        // Đếm số lượng đơn cho từng Tab
+        // Đếm số lượng đơn cho từng Tab theo 6 trạng thái + Tất cả
         int countAll = userOrders.size();
-        int countUnpaid = 0;
-        int countShipping = 0;
-        int countPending = 0;
-        int countCompleted = 0;
-        int countCancelled = 0;
-        int countRefunded = 0;
+        int countPending = 0;    // 1. Chờ xác nhận (khi vừa mua hàng)
+        int countConfirmed = 0;  // 2. Chờ lấy hàng (sau khi admin duyệt)
+        int countShipping = 0;   // 3. Chờ giao hàng (đang vận chuyển)
+        int countDelivered = 0;  // 4. Đã giao (hoàn tất)
+        int countReturned = 0;   // 5. Trả hàng / hoàn tiền
+        int countCancelled = 0;  // 6. Đã hủy
 
         for (Order o : userOrders) {
             String st = o.getStatus() != null ? o.getStatus().toUpperCase() : "";
             switch (st) {
-                case "UNPAID":
-                    countUnpaid++;
+                case "CONFIRMED":
+                case "CHO_LAY_HANG":
+                case "PROCESSING":
+                    countConfirmed++;
                     break;
                 case "SHIPPING":
+                case "CHO_GIAO_HANG":
+                case "VAN_CHUYEN":
                     countShipping++;
-                    break;
-                case "PENDING":
-                case "CONFIRMED":
-                case "PROCESSING":
-                    countPending++;
                     break;
                 case "DELIVERED":
                 case "COMPLETED":
-                    countCompleted++;
+                case "DA_GIAO":
+                    countDelivered++;
+                    break;
+                case "RETURNED":
+                case "REFUNDED":
+                case "TRA_HANG":
+                    countReturned++;
                     break;
                 case "CANCELLED":
+                case "DA_HUY":
                     countCancelled++;
                     break;
-                case "REFUNDED":
-                    countRefunded++;
-                    break;
+                case "PENDING":
+                case "CHO_XAC_NHAN":
+                case "UNPAID":
                 default:
                     countPending++;
                     break;
@@ -141,7 +147,7 @@ public class MyOrdersController extends HttpServlet {
             keyword = keyword.trim();
         }
 
-        // Lọc danh sách theo Tab
+        // Lọc danh sách theo Tab: Tất cả - chờ xác nhận - chờ lấy hàng - chờ giao hàng - đã giao - trả hàng - đã hủy
         List<Order> tabOrders = new ArrayList<>();
         List<Order> filteredList = new ArrayList<>();
         for (Order o : userOrders) {
@@ -149,23 +155,32 @@ public class MyOrdersController extends HttpServlet {
             boolean matchTab = false;
 
             switch (tab) {
+                case "pending":
+                case "cho-xac-nhan":
                 case "unpaid":
-                    matchTab = "UNPAID".equals(st);
+                    matchTab = "PENDING".equals(st) || "CHO_XAC_NHAN".equals(st) || "UNPAID".equals(st);
+                    break;
+                case "confirmed":
+                case "cho-lay-hang":
+                    matchTab = "CONFIRMED".equals(st) || "CHO_LAY_HANG".equals(st) || "PROCESSING".equals(st);
                     break;
                 case "shipping":
-                    matchTab = "SHIPPING".equals(st);
+                case "cho-giao-hang":
+                    matchTab = "SHIPPING".equals(st) || "CHO_GIAO_HANG".equals(st) || "VAN_CHUYEN".equals(st);
                     break;
-                case "pending":
-                    matchTab = "PENDING".equals(st) || "CONFIRMED".equals(st) || "PROCESSING".equals(st);
-                    break;
+                case "delivered":
                 case "completed":
-                    matchTab = "DELIVERED".equals(st) || "COMPLETED".equals(st);
+                case "da-giao":
+                    matchTab = "DELIVERED".equals(st) || "COMPLETED".equals(st) || "DA_GIAO".equals(st);
+                    break;
+                case "returned":
+                case "refunded":
+                case "tra-hang":
+                    matchTab = "RETURNED".equals(st) || "REFUNDED".equals(st) || "TRA_HANG".equals(st);
                     break;
                 case "cancelled":
-                    matchTab = "CANCELLED".equals(st);
-                    break;
-                case "refunded":
-                    matchTab = "REFUNDED".equals(st);
+                case "da-huy":
+                    matchTab = "CANCELLED".equals(st) || "DA_HUY".equals(st);
                     break;
                 case "all":
                 default:
@@ -226,12 +241,16 @@ public class MyOrdersController extends HttpServlet {
         request.setAttribute("activeTab", tab);
         request.setAttribute("keyword", keyword != null ? keyword : "");
         request.setAttribute("countAll", countAll);
-        request.setAttribute("countUnpaid", countUnpaid);
-        request.setAttribute("countShipping", countShipping);
         request.setAttribute("countPending", countPending);
-        request.setAttribute("countCompleted", countCompleted);
+        request.setAttribute("countConfirmed", countConfirmed);
+        request.setAttribute("countShipping", countShipping);
+        request.setAttribute("countDelivered", countDelivered);
+        request.setAttribute("countReturned", countReturned);
         request.setAttribute("countCancelled", countCancelled);
-        request.setAttribute("countRefunded", countRefunded);
+        // Tương thích ngược
+        request.setAttribute("countUnpaid", countPending);
+        request.setAttribute("countCompleted", countDelivered);
+        request.setAttribute("countRefunded", countReturned);
 
         // Chuyển tiếp tới giao diện my-orders.jsp
         request.getRequestDispatcher("my-orders.jsp").forward(request, response);
@@ -269,12 +288,12 @@ public class MyOrdersController extends HttpServlet {
         }
 
         if ("cancel".equalsIgnoreCase(action) && orderId > 0) {
-            // Xử lý khách hàng hủy đơn hàng (khi đơn còn ở trạng thái PENDING)
+            // Xử lý khách hàng hủy đơn hàng (khi đơn còn ở trạng thái Chờ xác nhận)
             boolean success = orderDAO.cancelOrder(orderId, currentUser.getId());
             if (success) {
                 session.setAttribute("toastSuccess", "🎉 Đã hủy đơn hàng #" + orderId + " thành công!");
             } else {
-                session.setAttribute("toastError", "❌ Không thể hủy đơn #" + orderId + ". Đơn đã được chuẩn bị hoặc đang giao!");
+                session.setAttribute("toastError", "❌ Không thể hủy đơn #" + orderId + ". Đơn đã được xác nhận hoặc đang chuẩn bị giao!");
             }
             response.sendRedirect(request.getContextPath() + "/my-orders?tab=cancelled");
             return;
@@ -286,9 +305,21 @@ public class MyOrdersController extends HttpServlet {
             if (success) {
                 session.setAttribute("toastSuccess", "🎉 Cảm ơn bạn! Đã xác nhận nhận hàng thành công cho đơn #" + orderId + ".");
             } else {
-                session.setAttribute("toastError", "❌ Thao tác không hợp lệ hoặc đơn hàng không ở trạng thái vận chuyển!");
+                session.setAttribute("toastError", "❌ Thao tác không hợp lệ hoặc đơn hàng không ở trạng thái giao hàng!");
             }
-            response.sendRedirect(request.getContextPath() + "/my-orders?tab=completed");
+            response.sendRedirect(request.getContextPath() + "/my-orders?tab=delivered");
+            return;
+        }
+
+        if ("returnOrder".equalsIgnoreCase(action) && orderId > 0) {
+            // Xử lý khách hàng yêu cầu trả hàng
+            boolean success = orderDAO.returnOrder(orderId, currentUser.getId());
+            if (success) {
+                session.setAttribute("toastSuccess", "📦 Đã gửi yêu cầu trả hàng cho đơn #" + orderId + " thành công!");
+            } else {
+                session.setAttribute("toastError", "❌ Không thể gửi yêu cầu trả hàng cho đơn #" + orderId + "!");
+            }
+            response.sendRedirect(request.getContextPath() + "/my-orders?tab=returned");
             return;
         }
 

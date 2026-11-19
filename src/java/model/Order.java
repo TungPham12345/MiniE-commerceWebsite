@@ -287,28 +287,41 @@ public class Order implements Serializable {
 
     /**
      * Lấy văn bản trạng thái hiển thị bằng Tiếng Việt
+     * Các trạng thái chuẩn:
+     * - Chờ xác nhận (PENDING, CHO_XAC_NHAN, UNPAID)
+     * - Chờ lấy hàng (CONFIRMED, CHO_LAY_HANG, PROCESSING)
+     * - Chờ giao hàng (SHIPPING, CHO_GIAO_HANG)
+     * - Đã giao (DELIVERED, COMPLETED, DA_GIAO)
+     * - Trả hàng (RETURNED, REFUNDED, TRA_HANG)
+     * - Đã hủy (CANCELLED, DA_HUY)
      * @return Chuỗi trạng thái thân thiện với người dùng
      */
     public String getStatusVietnamese() {
-        if (status == null) return "Chờ giao hàng";
+        if (status == null) return "Chờ xác nhận";
         switch (status.toUpperCase()) {
+            case "PENDING":
+            case "CHO_XAC_NHAN":
+            case "UNPAID":
+                return "Chờ xác nhận";
+            case "CONFIRMED":
+            case "CHO_LAY_HANG":
+            case "PROCESSING":
+                return "Chờ lấy hàng";
+            case "SHIPPING":
+            case "CHO_GIAO_HANG":
+            case "VAN_CHUYEN":
+                return "Chờ giao hàng";
             case "DELIVERED":
             case "COMPLETED":
-                return "Hoàn thành";
-            case "SHIPPING":
-                return "Vận chuyển";
-            case "PENDING":
-                return "Chờ giao hàng";
-            case "CONFIRMED":
-                return "Chờ giao hàng";
-            case "PROCESSING":
-                return "Chờ giao hàng";
-            case "UNPAID":
-                return "Chờ thanh toán";
-            case "CANCELLED":
-                return "Đã hủy";
+            case "DA_GIAO":
+                return "Đã giao";
+            case "RETURNED":
             case "REFUNDED":
-                return "Trả hàng/Hoàn tiền";
+            case "TRA_HANG":
+                return "Trả hàng";
+            case "CANCELLED":
+            case "DA_HUY":
+                return "Đã hủy";
             default:
                 return status;
         }
@@ -319,23 +332,31 @@ public class Order implements Serializable {
      * @return Tên class icon Bootstrap
      */
     public String getStatusIcon() {
-        if (status == null) return "bi-clock-history";
+        if (status == null) return "bi-hourglass-split";
         switch (status.toUpperCase()) {
+            case "PENDING":
+            case "CHO_XAC_NHAN":
+            case "UNPAID":
+                return "bi-hourglass-split";
+            case "CONFIRMED":
+            case "CHO_LAY_HANG":
+            case "PROCESSING":
+                return "bi-box-seam";
+            case "SHIPPING":
+            case "CHO_GIAO_HANG":
+            case "VAN_CHUYEN":
+                return "bi-truck";
             case "DELIVERED":
             case "COMPLETED":
+            case "DA_GIAO":
                 return "bi-check-circle-fill";
-            case "SHIPPING":
-                return "bi-truck";
-            case "PENDING":
-            case "CONFIRMED":
-            case "PROCESSING":
-                return "bi-hourglass-split";
-            case "UNPAID":
-                return "bi-credit-card-2-front";
-            case "CANCELLED":
-                return "bi-x-circle-fill";
+            case "RETURNED":
             case "REFUNDED":
+            case "TRA_HANG":
                 return "bi-arrow-counterclockwise";
+            case "CANCELLED":
+            case "DA_HUY":
+                return "bi-x-circle-fill";
             default:
                 return "bi-info-circle";
         }
@@ -346,23 +367,31 @@ public class Order implements Serializable {
      * @return Class màu Bootstrap
      */
     public String getStatusBadgeClass() {
-        if (status == null) return "bg-warning-subtle text-warning-emphasis";
+        if (status == null) return "bg-warning-subtle text-warning-emphasis border border-warning-subtle";
         switch (status.toUpperCase()) {
+            case "PENDING":
+            case "CHO_XAC_NHAN":
+            case "UNPAID":
+                return "bg-warning-subtle text-warning-emphasis border border-warning-subtle";
+            case "CONFIRMED":
+            case "CHO_LAY_HANG":
+            case "PROCESSING":
+                return "bg-info-subtle text-info-emphasis border border-info-subtle";
+            case "SHIPPING":
+            case "CHO_GIAO_HANG":
+            case "VAN_CHUYEN":
+                return "bg-primary-subtle text-primary border border-primary-subtle";
             case "DELIVERED":
             case "COMPLETED":
+            case "DA_GIAO":
                 return "bg-success-subtle text-success border border-success-subtle";
-            case "SHIPPING":
-                return "bg-primary-subtle text-primary border border-primary-subtle";
-            case "PENDING":
-            case "CONFIRMED":
-            case "PROCESSING":
-                return "bg-warning-subtle text-warning-emphasis border border-warning-subtle";
-            case "UNPAID":
-                return "bg-info-subtle text-info-emphasis border border-info-subtle";
-            case "CANCELLED":
-                return "bg-danger-subtle text-danger border border-danger-subtle";
+            case "RETURNED":
             case "REFUNDED":
+            case "TRA_HANG":
                 return "bg-secondary-subtle text-secondary border border-secondary-subtle";
+            case "CANCELLED":
+            case "DA_HUY":
+                return "bg-danger-subtle text-danger border border-danger-subtle";
             default:
                 return "bg-light text-dark border";
         }

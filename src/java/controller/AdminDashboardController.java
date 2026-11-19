@@ -63,12 +63,18 @@ public class AdminDashboardController extends HttpServlet {
                     boolean success = orderDAO.updateOrderStatus(orderId, newStatus);
                     if (success) {
                         String msg = "Cập nhật đơn hàng #" + orderId + " thành công!";
-                        if ("DELIVERED".equals(newStatus) || "CONFIRMED".equals(newStatus)) {
-                            msg = "🎉 Duyệt thành công đơn hàng #" + orderId + "!";
+                        if ("CONFIRMED".equals(newStatus)) {
+                            msg = "🎉 Đã xác nhận đơn hàng #" + orderId + "! Đơn chuyển sang trạng thái 'Chờ lấy hàng'.";
+                        } else if ("SHIPPING".equals(newStatus)) {
+                            msg = "🚚 Đã chuyển đơn hàng #" + orderId + " sang trạng thái 'Chờ giao hàng'!";
+                        } else if ("DELIVERED".equals(newStatus)) {
+                            msg = "✅ Đã xác nhận giao thành công đơn hàng #" + orderId + " (Đã giao)!";
+                        } else if ("RETURNED".equals(newStatus)) {
+                            msg = "🔄 Đã chuyển đơn hàng #" + orderId + " sang trạng thái 'Trả hàng'!";
                         } else if ("CANCELLED".equals(newStatus)) {
                             msg = "❌ Đã hủy đơn hàng #" + orderId + "!";
                         } else if ("PENDING".equals(newStatus)) {
-                            msg = "🔄 Đã khôi phục đơn hàng #" + orderId + " về trạng thái Chờ xử lý!";
+                            msg = "🔄 Đã đưa đơn hàng #" + orderId + " về trạng thái 'Chờ xác nhận'!";
                         }
                         session.setAttribute("toastSuccess", msg);
                     } else {
@@ -122,8 +128,8 @@ public class AdminDashboardController extends HttpServlet {
             if (!"CANCELLED".equalsIgnoreCase(o.getStatus())) {
                 totalRevenue += o.getTotalMoney(); // Cộng dồn tiền đơn hàng
             }
-            if ("PENDING".equalsIgnoreCase(o.getStatus())) {
-                pendingOrdersCount++;          // Tăng biến đếm đơn chờ xử lý
+            if ("PENDING".equalsIgnoreCase(o.getStatus()) || "CHO_XAC_NHAN".equalsIgnoreCase(o.getStatus()) || "UNPAID".equalsIgnoreCase(o.getStatus())) {
+                pendingOrdersCount++;          // Tăng biến đếm đơn chờ xác nhận
             }
         }
 

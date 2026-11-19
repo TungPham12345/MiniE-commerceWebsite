@@ -16,22 +16,22 @@
     String keyword = (String) request.getAttribute("keyword");
     if (keyword == null) keyword = "";
 
-    // Đếm số lượng đơn hàng theo từng tab
+    // Đếm số lượng đơn hàng theo 6 trạng thái + Tất cả
     Integer countAll = (Integer) request.getAttribute("countAll");
-    Integer countUnpaid = (Integer) request.getAttribute("countUnpaid");
-    Integer countShipping = (Integer) request.getAttribute("countShipping");
-    Integer countPending = (Integer) request.getAttribute("countPending");
-    Integer countCompleted = (Integer) request.getAttribute("countCompleted");
-    Integer countCancelled = (Integer) request.getAttribute("countCancelled");
-    Integer countRefunded = (Integer) request.getAttribute("countRefunded");
+    Integer countPending = (Integer) request.getAttribute("countPending");       // Chờ xác nhận
+    Integer countConfirmed = (Integer) request.getAttribute("countConfirmed");   // Chờ lấy hàng
+    Integer countShipping = (Integer) request.getAttribute("countShipping");     // Chờ giao hàng
+    Integer countDelivered = (Integer) request.getAttribute("countDelivered");   // Đã giao
+    Integer countReturned = (Integer) request.getAttribute("countReturned");     // Trả hàng
+    Integer countCancelled = (Integer) request.getAttribute("countCancelled");   // Đã hủy
 
     if (countAll == null) countAll = 0;
-    if (countUnpaid == null) countUnpaid = 0;
-    if (countShipping == null) countShipping = 0;
     if (countPending == null) countPending = 0;
-    if (countCompleted == null) countCompleted = 0;
+    if (countConfirmed == null) countConfirmed = 0;
+    if (countShipping == null) countShipping = 0;
+    if (countDelivered == null) countDelivered = 0;
+    if (countReturned == null) countReturned = 0;
     if (countCancelled == null) countCancelled = 0;
-    if (countRefunded == null) countRefunded = 0;
 
     String toastSuccess = (String) request.getAttribute("toastSuccess");
     String toastError = (String) request.getAttribute("toastError");
@@ -274,10 +274,10 @@
         </div>
     <% } %>
 
-    <!-- 1. Thanh Tabs Trạng Thái Đơn Hàng (Shopee Style Navigation Tabs) -->
+    <!-- 1. Thanh Tabs Trạng Thái Đơn Hàng: Tất cả - Chờ xác nhận - Chờ lấy hàng - Chờ giao hàng - Đã giao - Trả hàng - Đã hủy -->
     <div class="shopee-tabs-wrapper">
         <ul class="shopee-nav-tabs">
-            <!-- Tab: Tất cả -->
+            <!-- 1. Tab: Tất cả -->
             <li class="shopee-nav-item">
                 <a class="shopee-nav-link <%= "all".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
                    href="${pageContext.request.contextPath}/my-orders?tab=all">
@@ -287,63 +287,63 @@
                     <% } %>
                 </a>
             </li>
-            <!-- Tab: Chờ thanh toán -->
+            <!-- 2. Tab: Chờ xác nhận -->
             <li class="shopee-nav-item">
-                <a class="shopee-nav-link <%= "unpaid".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
-                   href="${pageContext.request.contextPath}/my-orders?tab=unpaid">
-                    Chờ thanh toán
-                    <% if (countUnpaid > 0) { %>
-                        <span class="badge <%= "unpaid".equalsIgnoreCase(activeTab) ? "bg-danger" : "bg-secondary-subtle text-secondary" %> shopee-tab-badge"><%= countUnpaid %></span>
-                    <% } %>
-                </a>
-            </li>
-            <!-- Tab: Vận chuyển -->
-            <li class="shopee-nav-item">
-                <a class="shopee-nav-link <%= "shipping".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
-                   href="${pageContext.request.contextPath}/my-orders?tab=shipping">
-                    Vận chuyển
-                    <% if (countShipping > 0) { %>
-                        <span class="badge <%= "shipping".equalsIgnoreCase(activeTab) ? "bg-danger" : "bg-secondary-subtle text-secondary" %> shopee-tab-badge"><%= countShipping %></span>
-                    <% } %>
-                </a>
-            </li>
-            <!-- Tab: Chờ giao hàng -->
-            <li class="shopee-nav-item">
-                <a class="shopee-nav-link <%= "pending".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
+                <a class="shopee-nav-link <%= "pending".equalsIgnoreCase(activeTab) || "unpaid".equalsIgnoreCase(activeTab) || "cho-xac-nhan".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
                    href="${pageContext.request.contextPath}/my-orders?tab=pending">
-                    Chờ giao hàng
+                    Chờ xác nhận
                     <% if (countPending > 0) { %>
-                        <span class="badge <%= "pending".equalsIgnoreCase(activeTab) ? "bg-danger" : "bg-secondary-subtle text-secondary" %> shopee-tab-badge"><%= countPending %></span>
+                        <span class="badge <%= "pending".equalsIgnoreCase(activeTab) || "unpaid".equalsIgnoreCase(activeTab) || "cho-xac-nhan".equalsIgnoreCase(activeTab) ? "bg-danger" : "bg-secondary-subtle text-secondary" %> shopee-tab-badge"><%= countPending %></span>
                     <% } %>
                 </a>
             </li>
-            <!-- Tab: Hoàn thành -->
+            <!-- 3. Tab: Chờ lấy hàng -->
             <li class="shopee-nav-item">
-                <a class="shopee-nav-link <%= "completed".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
-                   href="${pageContext.request.contextPath}/my-orders?tab=completed">
-                    Hoàn thành
-                    <% if (countCompleted > 0) { %>
-                        <span class="badge <%= "completed".equalsIgnoreCase(activeTab) ? "bg-danger" : "bg-secondary-subtle text-secondary" %> shopee-tab-badge"><%= countCompleted %></span>
+                <a class="shopee-nav-link <%= "confirmed".equalsIgnoreCase(activeTab) || "cho-lay-hang".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
+                   href="${pageContext.request.contextPath}/my-orders?tab=confirmed">
+                    Chờ lấy hàng
+                    <% if (countConfirmed > 0) { %>
+                        <span class="badge <%= "confirmed".equalsIgnoreCase(activeTab) || "cho-lay-hang".equalsIgnoreCase(activeTab) ? "bg-danger" : "bg-secondary-subtle text-secondary" %> shopee-tab-badge"><%= countConfirmed %></span>
                     <% } %>
                 </a>
             </li>
-            <!-- Tab: Đã hủy -->
+            <!-- 4. Tab: Chờ giao hàng -->
             <li class="shopee-nav-item">
-                <a class="shopee-nav-link <%= "cancelled".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
+                <a class="shopee-nav-link <%= "shipping".equalsIgnoreCase(activeTab) || "cho-giao-hang".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
+                   href="${pageContext.request.contextPath}/my-orders?tab=shipping">
+                    Chờ giao hàng
+                    <% if (countShipping > 0) { %>
+                        <span class="badge <%= "shipping".equalsIgnoreCase(activeTab) || "cho-giao-hang".equalsIgnoreCase(activeTab) ? "bg-danger" : "bg-secondary-subtle text-secondary" %> shopee-tab-badge"><%= countShipping %></span>
+                    <% } %>
+                </a>
+            </li>
+            <!-- 5. Tab: Đã giao -->
+            <li class="shopee-nav-item">
+                <a class="shopee-nav-link <%= "delivered".equalsIgnoreCase(activeTab) || "completed".equalsIgnoreCase(activeTab) || "da-giao".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
+                   href="${pageContext.request.contextPath}/my-orders?tab=delivered">
+                    Đã giao
+                    <% if (countDelivered > 0) { %>
+                        <span class="badge <%= "delivered".equalsIgnoreCase(activeTab) || "completed".equalsIgnoreCase(activeTab) || "da-giao".equalsIgnoreCase(activeTab) ? "bg-danger" : "bg-secondary-subtle text-secondary" %> shopee-tab-badge"><%= countDelivered %></span>
+                    <% } %>
+                </a>
+            </li>
+            <!-- 6. Tab: Trả hàng -->
+            <li class="shopee-nav-item">
+                <a class="shopee-nav-link <%= "returned".equalsIgnoreCase(activeTab) || "refunded".equalsIgnoreCase(activeTab) || "tra-hang".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
+                   href="${pageContext.request.contextPath}/my-orders?tab=returned">
+                    Trả hàng
+                    <% if (countReturned > 0) { %>
+                        <span class="badge <%= "returned".equalsIgnoreCase(activeTab) || "refunded".equalsIgnoreCase(activeTab) || "tra-hang".equalsIgnoreCase(activeTab) ? "bg-danger" : "bg-secondary-subtle text-secondary" %> shopee-tab-badge"><%= countReturned %></span>
+                    <% } %>
+                </a>
+            </li>
+            <!-- 7. Tab: Đã hủy -->
+            <li class="shopee-nav-item">
+                <a class="shopee-nav-link <%= "cancelled".equalsIgnoreCase(activeTab) || "da-huy".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
                    href="${pageContext.request.contextPath}/my-orders?tab=cancelled">
                     Đã hủy
                     <% if (countCancelled > 0) { %>
-                        <span class="badge <%= "cancelled".equalsIgnoreCase(activeTab) ? "bg-danger" : "bg-secondary-subtle text-secondary" %> shopee-tab-badge"><%= countCancelled %></span>
-                    <% } %>
-                </a>
-            </li>
-            <!-- Tab: Trả hàng/Hoàn tiền -->
-            <li class="shopee-nav-item">
-                <a class="shopee-nav-link <%= "refunded".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
-                   href="${pageContext.request.contextPath}/my-orders?tab=refunded">
-                    Trả hàng/Hoàn tiền
-                    <% if (countRefunded > 0) { %>
-                        <span class="badge <%= "refunded".equalsIgnoreCase(activeTab) ? "bg-danger" : "bg-secondary-subtle text-secondary" %> shopee-tab-badge"><%= countRefunded %></span>
+                        <span class="badge <%= "cancelled".equalsIgnoreCase(activeTab) || "da-huy".equalsIgnoreCase(activeTab) ? "bg-danger" : "bg-secondary-subtle text-secondary" %> shopee-tab-badge"><%= countCancelled %></span>
                     <% } %>
                 </a>
             </li>
@@ -503,10 +503,11 @@
                                     <i class="bi bi-eye me-1"></i> Chi tiết đơn
                                 </button>
 
-                                <!-- Nút Hủy Đơn (Nếu đang PENDING hoặc UNPAID) -->
+                                <!-- Nút Hủy Đơn (Khi đơn đang ở trạng thái Chờ xác nhận) -->
                                 <% 
                                     String st = o.getStatus() != null ? o.getStatus().toUpperCase() : "";
-                                    if ("PENDING".equals(st) || "UNPAID".equals(st) || "CONFIRMED".equals(st)) { 
+                                    boolean canCancel = "PENDING".equals(st) || "UNPAID".equals(st) || "CHO_XAC_NHAN".equals(st);
+                                    if (canCancel) { 
                                 %>
                                     <button type="button" 
                                             class="btn btn-outline-danger rounded-pill btn-sm px-3 fw-semibold btn-cancel-order"
@@ -517,8 +518,8 @@
                                     </button>
                                 <% } %>
 
-                                <!-- Nút Đã Nhận Được Hàng (Nếu đang SHIPPING) -->
-                                <% if ("SHIPPING".equals(st)) { %>
+                                <!-- Nút Đã Nhận Được Hàng (Khi đơn đang Chờ giao hàng / Vận chuyển) -->
+                                <% if ("SHIPPING".equals(st) || "CHO_GIAO_HANG".equals(st) || "VAN_CHUYEN".equals(st)) { %>
                                     <form method="POST" action="${pageContext.request.contextPath}/my-orders" class="d-inline">
                                         <input type="hidden" name="action" value="confirmReceived">
                                         <input type="hidden" name="orderId" value="<%= o.getId() %>">
@@ -528,8 +529,20 @@
                                     </form>
                                 <% } %>
 
-                                <!-- Nút Mua Lại (Nếu đã DELIVERED hoặc CANCELLED) -->
-                                <% if ("DELIVERED".equals(st) || "COMPLETED".equals(st) || "CANCELLED".equals(st)) { %>
+                                <!-- Nút Yêu Cầu Trả Hàng (Khi đơn Đã giao) -->
+                                <% if ("DELIVERED".equals(st) || "COMPLETED".equals(st) || "DA_GIAO".equals(st)) { %>
+                                    <form method="POST" action="${pageContext.request.contextPath}/my-orders" class="d-inline">
+                                        <input type="hidden" name="action" value="returnOrder">
+                                        <input type="hidden" name="orderId" value="<%= o.getId() %>">
+                                        <button type="submit" class="btn btn-outline-warning rounded-pill btn-sm px-3 fw-semibold"
+                                                onclick="return confirm('Bạn có chắc chắn muốn gửi yêu cầu Trả hàng / Hoàn tiền cho đơn #<%= o.getId() %>?');">
+                                            <i class="bi bi-arrow-counterclockwise me-1"></i> Trả hàng
+                                        </button>
+                                    </form>
+                                <% } %>
+
+                                <!-- Nút Mua Lại (Khi đơn Đã giao, Đã hủy hoặc Trả hàng) -->
+                                <% if ("DELIVERED".equals(st) || "COMPLETED".equals(st) || "CANCELLED".equals(st) || "RETURNED".equals(st) || "REFUNDED".equals(st) || "DA_GIAO".equals(st)) { %>
                                     <form method="POST" action="${pageContext.request.contextPath}/my-orders" class="d-inline">
                                         <input type="hidden" name="action" value="repurchase">
                                         <input type="hidden" name="orderId" value="<%= o.getId() %>">
@@ -554,11 +567,12 @@
     <% for (Order o : orders) { %>
         <% 
             String st = o.getStatus() != null ? o.getStatus().toUpperCase() : "";
-            boolean isPending = "PENDING".equals(st) || "UNPAID".equals(st);
-            boolean isConfirmed = "CONFIRMED".equals(st) || "PROCESSING".equals(st) || "SHIPPING".equals(st) || "DELIVERED".equals(st);
-            boolean isShipping = "SHIPPING".equals(st) || "DELIVERED".equals(st);
-            boolean isDelivered = "DELIVERED".equals(st) || "COMPLETED".equals(st);
-            boolean isCancelled = "CANCELLED".equals(st);
+            boolean isPending = "PENDING".equals(st) || "UNPAID".equals(st) || "CHO_XAC_NHAN".equals(st);
+            boolean isConfirmed = "CONFIRMED".equals(st) || "CHO_LAY_HANG".equals(st) || "PROCESSING".equals(st);
+            boolean isShipping = "SHIPPING".equals(st) || "CHO_GIAO_HANG".equals(st) || "VAN_CHUYEN".equals(st);
+            boolean isDelivered = "DELIVERED".equals(st) || "COMPLETED".equals(st) || "DA_GIAO".equals(st);
+            boolean isReturned = "RETURNED".equals(st) || "REFUNDED".equals(st) || "TRA_HANG".equals(st);
+            boolean isCancelled = "CANCELLED".equals(st) || "DA_HUY".equals(st);
         %>
 
         <!-- 1. Modal Chi Tiết Đơn Hàng (Kèm Tiến Trình Đơn Hàng Timeline) -->
@@ -575,32 +589,40 @@
 
                     <div class="modal-body p-4">
                         <!-- Timeline Tiến Trình Giao Hàng -->
-                        <% if (!isCancelled) { %>
-                            <div class="order-timeline">
-                                <div class="timeline-step <%= isPending || isConfirmed || isShipping || isDelivered ? "completed" : "" %>">
-                                    <div class="timeline-icon"><i class="bi bi-file-earmark-check"></i></div>
-                                    <div class="timeline-title">Đơn Đã Đặt</div>
-                                    <div class="text-muted" style="font-size: 0.7rem;"><%= o.getCreatedAt() %></div>
-                                </div>
-                                <div class="timeline-step <%= isConfirmed ? "completed" : (isPending ? "active" : "") %>">
-                                    <div class="timeline-icon"><i class="bi bi-box-seam"></i></div>
-                                    <div class="timeline-title">Đã Xác Nhận</div>
-                                </div>
-                                <div class="timeline-step <%= isShipping ? "completed" : (isConfirmed && !isShipping ? "active" : "") %>">
-                                    <div class="timeline-icon"><i class="bi bi-truck"></i></div>
-                                    <div class="timeline-title">Đang Vận Chuyển</div>
-                                </div>
-                                <div class="timeline-step <%= isDelivered ? "completed" : "" %>">
-                                    <div class="timeline-icon"><i class="bi bi-house-check"></i></div>
-                                    <div class="timeline-title">Đã Nhận Hàng</div>
-                                </div>
-                            </div>
-                        <% } else { %>
+                        <% if (isCancelled) { %>
                             <div class="alert alert-danger rounded-3 d-flex align-items-center mb-4">
                                 <i class="bi bi-x-octagon-fill fs-3 me-3 text-danger"></i>
                                 <div>
                                     <strong class="d-block">Đơn hàng này đã bị hủy</strong>
-                                    <span class="small">Lý do: Khách hàng yêu cầu hủy đơn hoặc thay đổi nhu cầu mua sắm.</span>
+                                    <span class="small">Lý do: Khách hàng hoặc người quản trị đã hủy đơn hàng này.</span>
+                                </div>
+                            </div>
+                        <% } else if (isReturned) { %>
+                            <div class="alert alert-secondary rounded-3 d-flex align-items-center mb-4">
+                                <i class="bi bi-arrow-counterclockwise fs-3 me-3 text-secondary"></i>
+                                <div>
+                                    <strong class="d-block">Đơn hàng ở trạng thái Trả hàng / Hoàn tiền</strong>
+                                    <span class="small">Đơn hàng đang trong quy trình xử lý trả hàng hoặc đã hoàn trả thành công.</span>
+                                </div>
+                            </div>
+                        <% } else { %>
+                            <div class="order-timeline">
+                                <div class="timeline-step <%= isPending || isConfirmed || isShipping || isDelivered ? "completed" : "" %>">
+                                    <div class="timeline-icon"><i class="bi bi-file-earmark-check"></i></div>
+                                    <div class="timeline-title">Chờ xác nhận</div>
+                                    <div class="text-muted" style="font-size: 0.7rem;"><%= o.getCreatedAt() %></div>
+                                </div>
+                                <div class="timeline-step <%= isConfirmed || isShipping || isDelivered ? "completed" : (isPending ? "active" : "") %>">
+                                    <div class="timeline-icon"><i class="bi bi-box-seam"></i></div>
+                                    <div class="timeline-title">Chờ lấy hàng</div>
+                                </div>
+                                <div class="timeline-step <%= isShipping || isDelivered ? "completed" : (isConfirmed ? "active" : "") %>">
+                                    <div class="timeline-icon"><i class="bi bi-truck"></i></div>
+                                    <div class="timeline-title">Chờ giao hàng</div>
+                                </div>
+                                <div class="timeline-step <%= isDelivered ? "completed" : (isShipping ? "active" : "") %>">
+                                    <div class="timeline-icon"><i class="bi bi-house-check"></i></div>
+                                    <div class="timeline-title">Đã giao</div>
                                 </div>
                             </div>
                         <% } %>

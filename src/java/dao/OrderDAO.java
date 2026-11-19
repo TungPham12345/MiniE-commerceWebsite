@@ -263,10 +263,13 @@ public class OrderDAO {
      * @return true nếu cập nhật thành công, ngược lại false
      */
     public boolean updateOrderStatus(int orderId, String status) {
-        if ("CANCELLED".equalsIgnoreCase(status)) {
+        if ("CANCELLED".equalsIgnoreCase(status) || "DA_HUY".equalsIgnoreCase(status)) {
             return transitionOrderStock(orderId, "CANCELLED");
         }
-        if ("PENDING".equalsIgnoreCase(status)) {
+        if ("RETURNED".equalsIgnoreCase(status) || "REFUNDED".equalsIgnoreCase(status) || "TRA_HANG".equalsIgnoreCase(status)) {
+            return transitionOrderStock(orderId, "RETURNED");
+        }
+        if ("PENDING".equalsIgnoreCase(status) || "CHO_XAC_NHAN".equalsIgnoreCase(status)) {
             return transitionOrderStock(orderId, "PENDING");
         }
 
@@ -322,26 +325,32 @@ public class OrderDAO {
                 }
             }
 
-            if ("CANCELLED".equals(newStatus)) {
-                if (!"PENDING".equalsIgnoreCase(currentStatus)
-                        && !"UNPAID".equalsIgnoreCase(currentStatus)
-                        && !"CHO_XU_LY".equalsIgnoreCase(currentStatus)) {
-                    conn.rollback();
-                    return false;
+            if ("CANCELLED".equals(newStatus) || "RETURNED".equals(newStatus)) {
+                if ("CANCELLED".equals(newStatus)) {
+                    if (!"PENDING".equalsIgnoreCase(currentStatus)
+                            && !"UNPAID".equalsIgnoreCase(currentStatus)
+                            && !"CHO_XU_LY".equalsIgnoreCase(currentStatus)
+                            && !"CHO_XAC_NHAN".equalsIgnoreCase(currentStatus)
+                            && !"CONFIRMED".equalsIgnoreCase(currentStatus)
+                            && !"CHO_LAY_HANG".equalsIgnoreCase(currentStatus)) {
+                        conn.rollback();
+                        return false;
+                    }
                 }
                 if (stockDeducted) {
                     adjustOrderInventory(conn, orderId, true);
                 }
                 try (PreparedStatement ps = conn.prepareStatement(
-                        "UPDATE orders SET status = 'CANCELLED', stock_deducted = 0 WHERE id = ?")) {
-                    ps.setInt(1, orderId);
+                        "UPDATE orders SET status = ?, stock_deducted = 0 WHERE id = ?")) {
+                    ps.setString(1, newStatus);
+                    ps.setInt(2, orderId);
                     if (ps.executeUpdate() == 0) {
                         conn.rollback();
                         return false;
                     }
                 }
             } else {
-                if ("CANCELLED".equalsIgnoreCase(currentStatus) && !stockDeducted) {
+                if (("CANCELLED".equalsIgnoreCase(currentStatus) || "RETURNED".equalsIgnoreCase(currentStatus)) && !stockDeducted) {
                     adjustOrderInventory(conn, orderId, false);
                     stockDeducted = true;
                 }
@@ -521,9 +530,9 @@ public class OrderDAO {
         if (o.getUserId() != null && o.getUserId() != userId) {
             return false;
         }
-        // Chỉ cho phép hủy khi đơn còn ở trạng thái PENDING hoặc UNPAID
+        // Chỉ cho phép khách hủy khi đơn còn ở trạng thái Chờ xác nhận
         String currentStatus = o.getStatus() != null ? o.getStatus().toUpperCase() : "";
-        if ("PENDING".equals(currentStatus) || "UNPAID".equals(currentStatus) || "CHO_XU_LY".equals(currentStatus)) {
+        if ("PENDING".equals(currentStatus) || "UNPAID".equals(currentStatus) || "CHO_XU_LY".equals(currentStatus) || "CHO_XAC_NHAN".equals(currentStatus)) {
             return updateOrderStatus(orderId, "CANCELLED");
         }
         return false;
@@ -544,8 +553,29 @@ public class OrderDAO {
             return false;
         }
         String currentStatus = o.getStatus() != null ? o.getStatus().toUpperCase() : "";
-        if ("SHIPPING".equals(currentStatus) || "VAN_CHUYEN".equals(currentStatus)) {
+        if ("SHIPPING".equals(currentStatus) || "VAN_CHUYEN".equals(currentStatus) || "CHO_GIAO_HANG".equals(currentStatus)) {
             return updateOrderStatus(orderId, "DELIVERED");
+        }
+        return false;
+    }
+
+    /**
+     * Khách hàng yêu cầu trả hàng / hoàn tiền (khi đơn đã giao thành công)
+     * @param orderId Mã đơn hàng
+     * @param userId  Mã tài khoản người đặt hàng
+     * @return true nếu gửi yêu cầu thành công
+     */
+    public boolean returnOrder(int orderId, int userId) {
+        Order o = getOrderById(orderId);
+        if (o == null) {
+            return false;
+        }
+        if (o.getUserId() != null && o.getUserId() != userId) {
+            return false;
+        }
+        String currentStatus = o.getStatus() != null ? o.getStatus().toUpperCase() : "";
+        if ("DELIVERED".equals(currentStatus) || "COMPLETED".equals(currentStatus) || "DA_GIAO".equals(currentStatus)) {
+            return updateOrderStatus(orderId, "RETURNED");
         }
         return false;
     }
