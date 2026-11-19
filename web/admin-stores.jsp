@@ -3,6 +3,7 @@
 <%
     User adminUser = (User) session.getAttribute("user");
     List<Store> stores = (List<Store>) request.getAttribute("stores");
+    request.setAttribute("adminActivePage", "stores");
 %>
 
 <jsp:include page="includes/header.jsp" />
@@ -11,29 +12,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<div class="container-fluid my-4">
-    <div class="row">
-        <!-- Sidebar Navigation Admin -->
-        <div class="col-md-3 col-lg-2 bg-white border-end min-vh-100 p-3">
-            <h5 class="fw-bold text-danger mb-4"><i class="bi bi-shield-lock-fill me-2"></i> ADMIN PANEL</h5>
-            <div class="nav flex-column nav-pills gap-2">
-                <a href="${pageContext.request.contextPath}/admin/dashboard" class="nav-link text-dark fw-semibold">
-                    <i class="bi bi-speedometer2 me-2"></i> Dashboard
-                </a>
-                <a href="${pageContext.request.contextPath}/admin/products" class="nav-link text-dark fw-semibold">
-                    <i class="bi bi-box-seam me-2"></i> Quản Lý Sản Phẩm
-                </a>
-                <a href="${pageContext.request.contextPath}/admin/stores" class="nav-link active bg-danger fw-semibold">
-                    <i class="bi bi-geo-alt-fill me-2"></i> Quản Lý Bản Đồ Cửa Hàng
-                </a>
-                <a href="${pageContext.request.contextPath}/home" class="nav-link text-dark fw-semibold mt-4 border-top pt-3">
-                    <i class="bi bi-box-arrow-left me-2"></i> Trở Về Website
-                </a>
-            </div>
-        </div>
-
-        <!-- Main Content -->
-        <div class="col-md-9 col-lg-10 p-4">
+<main class="admin-stores-page">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h3 class="fw-extrabold m-0">Quản Lý Hệ Thống Bản Đồ Cửa Hàng</h3>
@@ -95,10 +74,8 @@
                         <div id="adminMap" style="height: 535px; border-radius: 12px; z-index: 1;"></div>
                     </div>
                 </div>
-            </div>
-        </div>
     </div>
-</div>
+</main>
 
 <!-- Modal Thêm Chi Nhánh Mới -->
 <div class="modal fade" id="addStoreModal" tabindex="-1">

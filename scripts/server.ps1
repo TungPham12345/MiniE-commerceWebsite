@@ -41,43 +41,99 @@ if (Test-Path "$parentDir\jdk17") {
 
 $javaBin = if ($javaHome) { "$javaHome\bin" } else { "javac" }
 
-# 3. Tu dong xac dinh cong Tomcat (doc tu server.xml hoac mac dinh 8080)
-$port = 8080
-if ($tomcatHome -and (Test-Path "$tomcatHome\conf\server.xml")) {
-    $xmlContent = Get-Content "$tomcatHome\conf\server.xml" -Raw
-    if ($xmlContent -match '<Connector port="(\d+)" protocol="HTTP/1.1"') {
-        $port = [int]$matches[1]
-    }
-}
+# 3. Dung CATALINA_BASE rieng de khong nap cac ung dung khac trong Tomcat dung chung
+$port         = 10000
+$catalinaBase = "$workspaceRoot\build\tomcat-base"
 
 $url        = "http://localhost:$port/ban_hang/home"
 $webSrc     = "$workspaceRoot\web"
 $buildWeb   = "$workspaceRoot\build\web"
 $classesDir = "$buildWeb\WEB-INF\classes"
 $libDir     = "$buildWeb\WEB-INF\lib"
-$deployDir  = if ($tomcatHome) { "$tomcatHome\webapps\ban_hang" } else { "" }
+$deployDir  = "$catalinaBase\webapps\ban_hang"
+
+function Initialize-IsolatedTomcatBase {
+    if (-not $tomcatHome -or -not (Test-Path "$tomcatHome\conf\server.xml")) {
+        throw "Khong tim thay cau hinh Tomcat tai: $tomcatHome"
+    }
+
+    $baseConf = "$catalinaBase\conf"
+    $baseServerXml = "$baseConf\server.xml"
+    if (-not (Test-Path $baseServerXml)) {
+        New-Item -ItemType Directory -Path $baseConf -Force | Out-Null
+        Get-ChildItem -Path "$tomcatHome\conf" -Force |
+            Where-Object { $_.Name -ne "Catalina" } |
+            ForEach-Object {
+                Copy-Item -LiteralPath $_.FullName -Destination $baseConf -Recurse -Force
+            }
+    }
+    if (-not (Test-Path $baseServerXml)) {
+        throw "Khong the tao server.xml cho Tomcat rieng tai: $baseServerXml"
+    }
+
+    @(
+        "$catalinaBase\logs",
+        "$catalinaBase\temp",
+        "$catalinaBase\work",
+        "$catalinaBase\webapps",
+        "$baseConf\Catalina\localhost"
+    ) | ForEach-Object {
+        if (-not (Test-Path $_)) {
+            New-Item -ItemType Directory -Path $_ -Force | Out-Null
+        }
+    }
+
+    $serverConfig = New-Object System.Xml.XmlDocument
+    $serverConfig.PreserveWhitespace = $true
+    $serverConfig.Load($baseServerXml)
+    $connector = $serverConfig.SelectSingleNode('/Server/Service[@name="Catalina"]/Connector[@protocol="HTTP/1.1"]')
+    if ($null -eq $connector) {
+        throw "Khong tim thay HTTP Connector trong: $baseServerXml"
+    }
+    if ($connector.GetAttribute("port") -ne [string]$port) {
+        $connector.SetAttribute("port", [string]$port)
+        $serverConfig.Save($baseServerXml)
+    }
+
+    $contextConfig = New-Object System.Xml.XmlDocument
+    $context = $contextConfig.CreateElement("Context")
+    $context.SetAttribute("docBase", $buildWeb)
+    [void]$contextConfig.AppendChild($context)
+    $manager = $contextConfig.CreateElement("Manager")
+    $manager.SetAttribute("pathname", "")
+    [void]$context.AppendChild($manager)
+    $contextConfig.Save("$baseConf\Catalina\localhost\ban_hang.xml")
+}
+
+function Import-SmtpEnvironment {
+    foreach ($name in @("GMAIL_SMTP_USERNAME", "GMAIL_SMTP_APP_PASSWORD")) {
+        $userValue = [Environment]::GetEnvironmentVariable($name, "User")
+        if (-not [string]::IsNullOrWhiteSpace($userValue)) {
+            [Environment]::SetEnvironmentVariable($name, $userValue, "Process")
+        }
+    }
+
+    $configured = -not [string]::IsNullOrWhiteSpace($env:GMAIL_SMTP_USERNAME) -and
+        -not [string]::IsNullOrWhiteSpace($env:GMAIL_SMTP_APP_PASSWORD)
+    Write-Host "[INFO] SMTP environment available to Tomcat: $configured" -ForegroundColor Cyan
+}
 
 function Stop-TomcatServer {
     Write-Host "[STOP] Dang kiem tra va tat Tomcat tren cong $port..." -ForegroundColor Yellow
-    try {
-        $conns = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
-        if ($conns) {
-            foreach ($conn in $conns) {
-                $pidToKill = $conn.OwningProcess
-                if ($pidToKill -gt 0) {
-                    Write-Host "   Dung tien trinh PID: $pidToKill" -ForegroundColor Gray
-                    Stop-Process -Id $pidToKill -Force -ErrorAction SilentlyContinue
-                }
-            }
-            Start-Sleep -Seconds 1
-        }
-        Get-CimInstance Win32_Process -Filter "CommandLine LIKE '%catalina%'" -ErrorAction SilentlyContinue | ForEach-Object {
-            Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
-        }
-        Write-Host "[OK] Da tat Tomcat thanh cong!" -ForegroundColor Green
-    } catch {
-        Write-Host "[INFO] Khong co tien trinh Tomcat nao dang chay." -ForegroundColor Gray
+    $processes = Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+        $_.CommandLine -and $_.CommandLine.IndexOf($catalinaBase, [StringComparison]::OrdinalIgnoreCase) -ge 0
     }
+    if (-not $processes) {
+        Write-Host "[INFO] Khong co Tomcat rieng nao dang chay." -ForegroundColor Gray
+        return
+    }
+
+    foreach ($process in $processes) {
+        Write-Host "   Dung Tomcat rieng PID: $($process.ProcessId)" -ForegroundColor Gray
+        Stop-Process -Id $process.ProcessId -Force -ErrorAction Stop
+    }
+    Start-Sleep -Seconds 1
+    Write-Host "[OK] Da dung Tomcat rieng." -ForegroundColor Green
 }
 
 function Build-Project {
@@ -139,18 +195,34 @@ function Build-Project {
 }
 
 function Start-TomcatServer {
-    Build-Project
-
-    $conns = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
+    $conns = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
     if ($conns) {
-        Write-Host "[INFO] Tomcat dang chay san tren cong $port." -ForegroundColor Green
-        Open-Website
-        return
+        $processIds = $conns | Select-Object -ExpandProperty OwningProcess -Unique
+        foreach ($processId in $processIds) {
+            $process = Get-CimInstance Win32_Process -Filter "ProcessId=$processId" -ErrorAction SilentlyContinue
+            if ($process -and $process.CommandLine -and
+                    $process.CommandLine.IndexOf($catalinaBase, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                Write-Host "[INFO] Tomcat rieng dang chay san tren cong $port." -ForegroundColor Green
+                Open-Website
+                return
+            }
+        }
+        throw "Cong $port dang duoc tien trinh khac su dung. Khong dung tien trinh do."
+    }
+
+    Import-SmtpEnvironment
+    Build-Project
+    Initialize-IsolatedTomcatBase
+
+    $conns = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+    if ($conns) {
+        throw "Cong $port vua duoc tien trinh khac su dung. Khong khoi dong Tomcat."
     }
 
     Write-Host "[RUN] Khoi dong Tomcat tren cong $port..." -ForegroundColor Cyan
     if ($javaHome) { $env:JAVA_HOME = $javaHome }
     if ($tomcatHome) { $env:CATALINA_HOME = $tomcatHome }
+    $env:CATALINA_BASE = $catalinaBase
 
     $catBat = "$tomcatHome\bin\catalina.bat"
     Start-Process -FilePath "cmd.exe" -ArgumentList "/c start `"Tomcat Server (HighFashion)`" `"$catBat`" run"
@@ -159,7 +231,7 @@ function Start-TomcatServer {
     $ready = $false
     for ($i = 0; $i -lt 30; $i++) {
         Start-Sleep -Seconds 1
-        $testConn = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
+        $testConn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
         if ($testConn) {
             $ready = $true
             break
@@ -175,12 +247,15 @@ function Start-TomcatServer {
 }
 
 function Run-TomcatConsole {
-    Build-Project
     Stop-TomcatServer
+    Import-SmtpEnvironment
+    Build-Project
+    Initialize-IsolatedTomcatBase
 
     Write-Host "[RUN] Khoi dong Tomcat truc tiep trong Terminal (Nhan Ctrl+C de dung)..." -ForegroundColor Cyan
     if ($javaHome) { $env:JAVA_HOME = $javaHome }
     if ($tomcatHome) { $env:CATALINA_HOME = $tomcatHome }
+    $env:CATALINA_BASE = $catalinaBase
     
     Start-Job -ScriptBlock {
         param($u)

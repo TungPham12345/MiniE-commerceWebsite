@@ -143,13 +143,15 @@ Hệ thống phân quyền rõ ràng thành 3 nhóm đối tượng:
   - Tích hợp bản đồ số Leaflet / OpenStreetMap hiển thị trực quan các điểm đánh dấu (Markers) với tọa độ thực tế (`latitude`, `longitude`).
   - Nhấp vào từng cửa hàng trên danh sách để bản đồ tự động cuộn và zoom tới tọa độ cửa hàng đó.
 
-#### [FR-07] Đăng nhập & Đăng ký (Authentication)
-- **Mã Controller:** `LoginController` (`/login`), `RegisterController` (`/register`), `LogoutController` (`/logout`)
+#### [FR-07] Đăng nhập, Đăng ký & Khôi phục mật khẩu (Authentication)
+- **Mã Controller:** `LoginController` (`/login`), `RegisterController` (`/register`), `LogoutController` (`/logout`), `ForgotPasswordController` (`/forgot-password`)
 - **Mô tả:**
   - **Đăng ký:** Kiểm tra trùng tên tài khoản (`checkUsernameExists`), xác nhận mật khẩu, lưu thông tin người dùng mới.
-  - **Đăng nhập:** Xác thực tên đăng nhập và mật khẩu qua DBContext hoặc Mock Auth:
+  - **Đăng nhập:** Xác thực tên đăng nhập và mật khẩu qua DBContext hoặc Mock Auth; cho phép hiện/ẩn mật khẩu:
     - Nếu là Admin (`role = 1`): Chuyển hướng tới trang quản trị `/admin/dashboard`.
     - Nếu là Khách hàng (`role = 0`): Chuyển hướng về trang chủ `/home`.
+  - **Quên mật khẩu:** Tra cứu email đã đăng ký, gửi mã xác nhận dùng một lần có hiệu lực 10 phút, giới hạn 5 lần nhập sai; chỉ cho đặt mật khẩu mới sau khi xác nhận mã.
+  - **Cấu hình gửi mail:** Gmail SMTP dùng `GMAIL_SMTP_USERNAME` và `GMAIL_SMTP_APP_PASSWORD` từ biến môi trường; không lưu thông tin xác thực trong mã nguồn.
   - **Đăng xuất:** Hủy phiên (`session.invalidate()`), chuyển về trang chủ.
 
 ---

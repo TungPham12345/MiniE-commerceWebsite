@@ -8,6 +8,12 @@
             session.removeAttribute("errorMessage");
         }
     }
+    if (successMessage == null) {
+        successMessage = (String) session.getAttribute("successMessage");
+        if (successMessage != null) {
+            session.removeAttribute("successMessage");
+        }
+    }
     String redirectParam = request.getParameter("redirect");
     if (errorMessage == null && redirectParam != null && !redirectParam.trim().isEmpty()) {
         errorMessage = "⚠️ Bạn chưa đăng nhập! Vui lòng đăng nhập tài khoản trước khi mua hàng hoặc thêm vào giỏ hàng.";
@@ -46,10 +52,17 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label fw-bold">Mật khẩu <span class="text-danger fw-bold">*</span></label>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label class="form-label fw-bold mb-2">Mật khẩu <span class="text-danger fw-bold">*</span></label>
+                            <a class="small text-danger text-decoration-none mb-2" href="${pageContext.request.contextPath}/forgot-password">Quên mật khẩu?</a>
+                        </div>
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
-                            <input type="password" name="password" class="form-control border-start-0 bg-light required-input" placeholder="Nhập mật khẩu" required>
+                            <input type="password" id="loginPassword" name="password" class="form-control border-start-0 border-end-0 bg-light required-input" placeholder="Nhập mật khẩu" required>
+                            <button type="button" class="btn btn-light border border-start-0" id="toggleLoginPassword"
+                                    aria-label="Hiện mật khẩu" title="Hiện mật khẩu">
+                                <i class="bi bi-eye" aria-hidden="true"></i>
+                            </button>
                         </div>
                         <div class="invalid-feedback"><i class="bi bi-exclamation-circle me-1"></i>Đây là trường bắt buộc</div>
                     </div>
@@ -64,6 +77,15 @@
                 <script>
                 document.addEventListener("DOMContentLoaded", function() {
                     const form = document.getElementById("loginForm");
+                    const passwordInput = document.getElementById("loginPassword");
+                    const passwordToggle = document.getElementById("toggleLoginPassword");
+                    passwordToggle.addEventListener("click", function() {
+                        const showing = passwordInput.type === "text";
+                        passwordInput.type = showing ? "password" : "text";
+                        passwordToggle.setAttribute("aria-label", showing ? "Hiện mật khẩu" : "Ẩn mật khẩu");
+                        passwordToggle.setAttribute("title", showing ? "Hiện mật khẩu" : "Ẩn mật khẩu");
+                        passwordToggle.querySelector("i").className = showing ? "bi bi-eye" : "bi bi-eye-slash";
+                    });
                     if (!form) return;
                     const inputs = form.querySelectorAll(".required-input");
                     function validate(input) {

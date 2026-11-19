@@ -11,6 +11,7 @@
     }
 %>
 <%
+    request.setAttribute("adminActivePage", "products");
     List<Product> products = (List<Product>) request.getAttribute("products");
     List<Category> categories = (List<Category>) request.getAttribute("categories");
     NumberFormat fmt = NumberFormat.getInstance(new Locale("vi", "VN"));
@@ -39,7 +40,7 @@
     </div>
 <% } %>
 
-<div class="container-fluid admin-products-page px-3 px-xl-4 my-4">
+<div class="admin-products-page">
     <div class="d-flex justify-content-between align-items-center bg-white p-4 rounded-4 border shadow-sm mb-4">
         <div>
             <h2 class="fw-bold m-0"><i class="bi bi-box-seam me-2"></i>Quản Lý Sản Phẩm Quần Áo</h2>

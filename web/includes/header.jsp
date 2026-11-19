@@ -1,4 +1,9 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page import="model.User" %>
+<%
+    User headerUser = (User) session.getAttribute("user");
+    boolean headerAdmin = headerUser != null && (headerUser.isAdmin() || headerUser.getRole() == 1);
+%>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -78,6 +83,6 @@
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <!-- Custom CSS -->
-    <link href="${pageContext.request.contextPath}/css/style.css?v=20261118-admin-image-remove" rel="stylesheet">
+    <link href="${pageContext.request.contextPath}/css/style.css?v=20261119-account-profile" rel="stylesheet">
 </head>
-<body>
+<body class="<%= headerAdmin ? "admin-mode" : "" %>">
