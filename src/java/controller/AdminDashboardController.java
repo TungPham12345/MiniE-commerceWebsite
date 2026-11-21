@@ -11,7 +11,10 @@ import model.User;
 
 // Import thư viện danh sách và xử lý ngoại lệ I/O
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 // Import các thư viện Servlet và Session
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -153,6 +156,128 @@ public class AdminDashboardController extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        HttpSession session = request.getSession();
+        User user = (User) session.getAttribute("user");
+        if (user == null || !user.isAdmin()) {
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+
+        if ("advanceSelected".equals(request.getParameter("action"))) {
+            processSelectedOrders(request, response, session);
+            return;
+        }
+
         doGet(request, response);
+    }
+
+    private void processSelectedOrders(HttpServletRequest request, HttpServletResponse response, HttpSession session)
+            throws IOException {
+        String[] selectedIds = request.getParameterValues("orderIds");
+        if (selectedIds == null || selectedIds.length == 0) {
+            session.setAttribute("toastError", "Vui lòng chọn ít nhất một đơn hàng.");
+            response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+            return;
+        }
+
+        Set<Integer> orderIds = new LinkedHashSet<>();
+        int invalidIdCount = 0;
+        for (String value : selectedIds) {
+            try {
+                int orderId = Integer.parseInt(value);
+                if (orderId > 0) orderIds.add(orderId);
+                else invalidIdCount++;
+            } catch (NumberFormatException ignored) {
+                invalidIdCount++;
+            }
+        }
+        if (orderIds.isEmpty()) {
+            session.setAttribute("toastError", invalidIdCount > 0
+                    ? "Danh sách chọn không chứa mã đơn hàng hợp lệ."
+                    : "Không tìm thấy đơn hàng hợp lệ để xử lý.");
+            response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+            return;
+        }
+
+        OrderDAO orderDAO = new OrderDAO();
+        List<Order> orders = orderDAO.getAllOrders();
+        List<Integer> updatedIds = new ArrayList<>();
+        List<Integer> skippedIds = new ArrayList<>();
+        List<Integer> failedIds = new ArrayList<>();
+        int invalidCount = invalidIdCount;
+
+        for (Integer orderId : orderIds) {
+            Order selectedOrder = null;
+            for (Order order : orders) {
+                if (order.getId() == orderId) {
+                    selectedOrder = order;
+                    break;
+                }
+            }
+
+            String nextStatus = selectedOrder == null ? null : nextProcessingStatus(selectedOrder.getStatus());
+            if (nextStatus == null) {
+                skippedIds.add(orderId);
+            } else if (orderDAO.updateOrderStatus(orderId, nextStatus)) {
+                updatedIds.add(orderId);
+            } else {
+                failedIds.add(orderId);
+            }
+        }
+
+        if (!updatedIds.isEmpty()) {
+            session.setAttribute("toastSuccess",
+                    "Đã chuyển trạng thái " + updatedIds.size() + " đơn: " + formatOrderIds(updatedIds) + ".");
+        }
+        if (!skippedIds.isEmpty() || !failedIds.isEmpty() || invalidCount > 0) {
+            StringBuilder message = new StringBuilder();
+            if (!skippedIds.isEmpty()) {
+                message.append("Bỏ qua ").append(skippedIds.size())
+                        .append(" đơn không tìm thấy hoặc không có bước giao hàng tiếp theo: ")
+                        .append(formatOrderIds(skippedIds)).append(". ");
+            }
+            if (!failedIds.isEmpty()) {
+                message.append("Không cập nhật được ").append(failedIds.size())
+                        .append(" đơn: ").append(formatOrderIds(failedIds)).append(".");
+            }
+            if (invalidCount > 0) {
+                message.append(" Bỏ qua ").append(invalidCount).append(" mã đơn không hợp lệ.");
+            }
+            session.setAttribute("toastError", message.toString().trim());
+        } else if (updatedIds.isEmpty()) {
+            session.setAttribute("toastInfo", "Không có đơn nào cần chuyển trạng thái.");
+        }
+
+        response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+    }
+
+    private String nextProcessingStatus(String currentStatus) {
+        if (currentStatus == null) return null;
+        switch (currentStatus.trim().toUpperCase()) {
+            case "PENDING":
+            case "UNPAID":
+            case "CHO_XU_LY":
+            case "CHO_XAC_NHAN":
+                return "CONFIRMED";
+            case "CONFIRMED":
+            case "CHO_LAY_HANG":
+            case "PROCESSING":
+                return "SHIPPING";
+            case "SHIPPING":
+            case "CHO_GIAO_HANG":
+            case "VAN_CHUYEN":
+                return "DELIVERED";
+            default:
+                return null;
+        }
+    }
+
+    private String formatOrderIds(List<Integer> orderIds) {
+        StringBuilder formatted = new StringBuilder();
+        for (Integer orderId : orderIds) {
+            if (formatted.length() > 0) formatted.append(", ");
+            formatted.append("#").append(orderId);
+        }
+        return formatted.toString();
     }
 }

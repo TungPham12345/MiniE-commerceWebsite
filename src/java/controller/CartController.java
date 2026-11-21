@@ -61,19 +61,17 @@ public class CartController extends HttpServlet {
 
         ProductDAO productDAO = new ProductDAO();
         double totalMoney = 0;
-        int totalCount = 0;
         for (CartItem item : cart) {
             Product currentProduct = productDAO.getProductById(item.getProduct().getId());
             if (currentProduct != null) {
                 item.setProduct(currentProduct);
             }
             totalMoney += item.getTotalMoney();
-            totalCount += item.getQuantity();
         }
 
         session.setAttribute("cart", cart);
         session.setAttribute("cartTotal", totalMoney);
-        session.setAttribute("cartSize", totalCount);
+        session.setAttribute("cartSize", cart.size());
         request.setAttribute("cart", cart);
         request.setAttribute("totalMoney", totalMoney);
 
@@ -210,15 +208,13 @@ public class CartController extends HttpServlet {
 
                 // Update session totals
                 double total = 0;
-                int totalCount = 0;
                 for (CartItem ci : cart) {
                     total += ci.getTotalMoney();
-                    totalCount += ci.getQuantity();
                 }
 
                 session.setAttribute("addedToCart", true);
                 session.setAttribute("lastAddedItem", addedItem);
-                session.setAttribute("cartSize", totalCount);
+                session.setAttribute("cartSize", cart.size());
                 session.setAttribute("cartTotal", total);
             }
             session.setAttribute("cart", cart);
@@ -228,14 +224,14 @@ public class CartController extends HttpServlet {
                 response.setContentType("application/json;charset=UTF-8");
                 response.setCharacterEncoding("UTF-8");
                 String prodName = (addedItem != null && addedItem.getProduct() != null) ? addedItem.getProduct().getName() : "Sản phẩm";
-                int totalCount = session.getAttribute("cartSize") != null ? (Integer) session.getAttribute("cartSize") : cart.size();
+                int cartItemCount = cart.size();
                 double total = session.getAttribute("cartTotal") != null ? (Double) session.getAttribute("cartTotal") : 0;
                 String safeProdName = prodName.replace("\\", "\\\\").replace("\"", "\\\"");
                 String safeSize = (size != null) ? size.replace("\\", "\\\\").replace("\"", "\\\"") : "";
                 String json = String.format(
                     java.util.Locale.US,
                     "{\"success\": true, \"cartSize\": %d, \"cartTotal\": %.0f, \"productName\": \"%s\", \"size\": \"%s\", \"quantity\": %d, \"message\": \"Đã thêm vào giỏ hàng thành công!\"}",
-                    totalCount, total, safeProdName, safeSize, quantity
+                    cartItemCount, total, safeProdName, safeSize, quantity
                 );
                 response.getWriter().write(json);
                 return;
@@ -324,16 +320,14 @@ public class CartController extends HttpServlet {
 
         // Tính lại tổng tiền sau khi cập nhật hoặc xóa
         double total = 0;
-        int totalCount = 0;
         for (CartItem ci : cart) {
             total += ci.getTotalMoney();
-            totalCount += ci.getQuantity();
         }
 
         // Đồng bộ dữ liệu giỏ hàng mới vào Session
         session.setAttribute("cart", cart);
         session.setAttribute("cartTotal", total);
-        session.setAttribute("cartSize", totalCount);
+        session.setAttribute("cartSize", cart.size());
 
         // If request is AJAX, respond with OK status
         if (isAjaxRequest(request)) {

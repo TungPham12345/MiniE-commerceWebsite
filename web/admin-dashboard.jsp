@@ -131,21 +131,66 @@
                 <% } %>
             </div>
         </div>
+        <form id="bulkOrderForm" method="post" action="${pageContext.request.contextPath}/admin/dashboard">
+            <input type="hidden" name="action" value="advanceSelected">
+        </form>
+        <ul class="nav nav-tabs admin-order-tabs mb-3" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link active" data-order-tab="pending" role="tab" aria-selected="true">
+                    Chờ xác nhận <span class="badge bg-secondary ms-1" data-order-tab-count="pending">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link" data-order-tab="confirmed" role="tab" aria-selected="false">
+                    Đã xác nhận / Đang đóng gói <span class="badge bg-secondary ms-1" data-order-tab-count="confirmed">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link" data-order-tab="shipping" role="tab" aria-selected="false">
+                    Đang giao hàng <span class="badge bg-secondary ms-1" data-order-tab-count="shipping">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link" data-order-tab="delivered" role="tab" aria-selected="false">
+                    Đã giao / Hoàn tất <span class="badge bg-secondary ms-1" data-order-tab-count="delivered">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link" data-order-tab="closed" role="tab" aria-selected="false">
+                    Đã hủy / Hoàn trả <span class="badge bg-secondary ms-1" data-order-tab-count="closed">0</span>
+                </button>
+            </li>
+        </ul>
+        <div class="admin-order-bulk-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <span class="small text-muted">
+                Chọn đơn để xem trạng thái và thao tác kế tiếp trước khi xử lý.
+            </span>
+            <button type="button" id="advanceSelectedOrders"
+                    class="btn btn-primary btn-sm rounded-pill px-3" disabled>
+                <i class="bi bi-arrow-right-circle me-1"></i>
+                Xử lý đơn đã chọn (<span id="selectedOrderCount">0</span>)
+            </button>
+        </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle admin-orders-table">
                 <colgroup>
+                    <col style="width: 44px">
                     <col style="width: 78px">
-                    <col style="width: 140px">
+                    <col style="width: 150px">
+                    <col style="width: 205px">
+                    <col style="width: 135px">
                     <col style="width: 190px">
-                    <col style="width: 118px">
+                    <col style="width: 115px">
+                    <col style="width: 100px">
                     <col style="width: 170px">
-                    <col style="width: 96px">
-                    <col style="width: 90px">
-                    <col style="width: 148px">
-                    <col style="width: 230px">
+                    <col style="width: 245px">
                 </colgroup>
                 <thead class="table-light">
                     <tr>
+                        <th class="admin-order-select text-center">
+                            <input type="checkbox" class="form-check-input m-0" id="selectAllOrders"
+                                   aria-label="Chọn tất cả đơn trong tab hiện tại">
+                        </th>
                         <th class="admin-order-id">Mã Đơn</th>
                         <th class="admin-order-customer">Khách Hàng</th>
                         <th class="admin-order-email">Email</th>
@@ -159,8 +204,30 @@
                 </thead>
                 <tbody>
                     <% if (recentOrders != null && !recentOrders.isEmpty()) {
-                        for (Order o : recentOrders) { %>
-                            <tr>
+                        for (Order o : recentOrders) {
+                            String ost = o.getStatus() != null ? o.getStatus().toUpperCase() : "";
+                            String orderGroup;
+                            if ("PENDING".equals(ost) || "CHO_XAC_NHAN".equals(ost) || "UNPAID".equals(ost)) {
+                                orderGroup = "pending";
+                            } else if ("CONFIRMED".equals(ost) || "CHO_LAY_HANG".equals(ost) || "PROCESSING".equals(ost)) {
+                                orderGroup = "confirmed";
+                            } else if ("SHIPPING".equals(ost) || "CHO_GIAO_HANG".equals(ost) || "VAN_CHUYEN".equals(ost)) {
+                                orderGroup = "shipping";
+                            } else if ("DELIVERED".equals(ost) || "COMPLETED".equals(ost) || "DA_GIAO".equals(ost)) {
+                                orderGroup = "delivered";
+                            } else if ("CANCELLED".equals(ost) || "DA_HUY".equals(ost)
+                                    || "RETURNED".equals(ost) || "REFUNDED".equals(ost) || "TRA_HANG".equals(ost)) {
+                                orderGroup = "closed";
+                            } else {
+                                orderGroup = "pending";
+                            }
+                    %>
+                            <tr class="admin-order-data-row" data-order-group="<%= orderGroup %>">
+                                <td class="admin-order-select text-center">
+                                    <input type="checkbox" class="form-check-input admin-order-checkbox"
+                                           value="<%= o.getId() %>"
+                                           aria-label="Chọn đơn hàng #<%= o.getId() %>">
+                                </td>
                                 <td class="admin-order-id fw-bold text-dark">
                                     <a href="javascript:void(0)" class="text-decoration-none text-dark fw-bold" data-bs-toggle="modal" data-bs-target="#orderModal<%= o.getId() %>">
                                         #<%= o.getId() %>
@@ -178,7 +245,6 @@
                                 <td class="admin-order-payment"><span class="badge bg-secondary"><%= o.getPaymentMethod() %></span></td>
                                 <td class="admin-order-status">
                                     <% 
-                                        String ost = o.getStatus() != null ? o.getStatus().toUpperCase() : "";
                                         if ("DELIVERED".equals(ost) || "COMPLETED".equals(ost) || "DA_GIAO".equals(ost)) { 
                                     %>
                                         <span class="badge bg-success px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i>Đã giao</span>
@@ -281,7 +347,7 @@
                     <%  }
                        } else { %>
                              <tr>
-                                <td colspan="9" class="text-center py-5">
+                                <td colspan="10" class="text-center py-5">
                                     <div class="py-4">
                                         <div class="bg-light d-inline-flex p-4 rounded-circle mb-3 shadow-sm border text-muted">
                                             <i class="bi bi-inbox fs-1 text-secondary"></i>
@@ -294,6 +360,41 @@
                     <% } %>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <div class="modal fade" id="bulkOrderReviewModal" tabindex="-1" aria-labelledby="bulkOrderReviewTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold" id="bulkOrderReviewTitle">
+                        <i class="bi bi-clipboard-check me-2 text-danger"></i>Rà soát đơn hàng đã chọn
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3" id="bulkOrderReviewSummary"></p>
+                    <div class="table-responsive border rounded-3">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Mã đơn</th>
+                                    <th>Khách hàng</th>
+                                    <th>Trạng thái hiện tại</th>
+                                    <th>Thao tác kế tiếp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bulkOrderReviewRows"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light border rounded-pill px-4" data-bs-dismiss="modal">Quay lại</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4" id="confirmBulkOrderAction">
+                        Xác nhận xử lý
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -499,6 +600,163 @@
 
     <script>
         (function() {
+            const form = document.getElementById('bulkOrderForm');
+            const selectAll = document.getElementById('selectAllOrders');
+            const checkboxes = Array.from(document.querySelectorAll('.admin-order-checkbox'));
+            const submitButton = document.getElementById('advanceSelectedOrders');
+            const selectedCount = document.getElementById('selectedOrderCount');
+            const table = document.querySelector('.admin-orders-table');
+            const orderRows = table ? Array.from(table.querySelectorAll('.admin-order-data-row')) : [];
+            const tabs = Array.from(document.querySelectorAll('[data-order-tab]'));
+            const reviewModalElement = document.getElementById('bulkOrderReviewModal');
+            const reviewRows = document.getElementById('bulkOrderReviewRows');
+            const reviewSummary = document.getElementById('bulkOrderReviewSummary');
+            const confirmBulkAction = document.getElementById('confirmBulkOrderAction');
+            if (!form || !selectAll || !submitButton || !selectedCount || !reviewModalElement) return;
+
+            let activeTab = 'pending';
+            let actionableOrderCount = 0;
+
+            function visibleCheckboxes() {
+                return orderRows
+                    .filter(function(row) { return row.dataset.orderGroup === activeTab; })
+                    .map(function(row) { return row.querySelector('.admin-order-checkbox'); })
+                    .filter(Boolean);
+            }
+
+            function updateSelection() {
+                const checkedCount = checkboxes.filter(function(checkbox) {
+                    return checkbox.checked;
+                }).length;
+                const currentTabCheckboxes = visibleCheckboxes();
+                const checkedInTab = currentTabCheckboxes.filter(function(checkbox) {
+                    return checkbox.checked;
+                }).length;
+                selectedCount.textContent = checkedCount;
+                submitButton.disabled = checkedCount === 0;
+                selectAll.disabled = currentTabCheckboxes.length === 0;
+                selectAll.checked = currentTabCheckboxes.length > 0
+                        && checkedInTab === currentTabCheckboxes.length;
+                selectAll.indeterminate = checkedInTab > 0 && checkedInTab < currentTabCheckboxes.length;
+            }
+
+            function setActiveTab(tabName) {
+                activeTab = tabName;
+                tabs.forEach(function(tab) {
+                    const isActive = tab.dataset.orderTab === activeTab;
+                    tab.classList.toggle('active', isActive);
+                    tab.setAttribute('aria-selected', String(isActive));
+                });
+                orderRows.forEach(function(row) {
+                    row.hidden = row.dataset.orderGroup !== activeTab;
+                });
+                updateSelection();
+            }
+
+            function getNextAction(status) {
+                if (status.includes('Chờ xác nhận')) return 'Xác nhận → Chờ lấy hàng';
+                if (status.includes('Chờ lấy hàng')) return 'Giao hàng → Chờ giao';
+                if (status.includes('Chờ giao hàng')) return 'Xác nhận đã giao';
+                if (status.includes('Đã giao')) return 'Đã hoàn tất';
+                return 'Không có bước xử lý tự động';
+            }
+
+            function appendCell(row, value) {
+                const cell = document.createElement('td');
+                cell.textContent = value;
+                row.appendChild(cell);
+                return cell;
+            }
+
+            function showReviewModal() {
+                const selected = checkboxes.filter(function(checkbox) {
+                    return checkbox.checked;
+                });
+                if (selected.length === 0) return;
+
+                reviewRows.replaceChildren();
+                actionableOrderCount = 0;
+                let skippedCount = 0;
+                selected.forEach(function(checkbox) {
+                    const orderRow = checkbox.closest('.admin-order-data-row');
+                    const statusBadge = orderRow.querySelector('.admin-order-status .badge');
+                    const status = statusBadge ? statusBadge.textContent.trim() : 'Không xác định';
+                    const nextAction = getNextAction(status);
+                    const isActionable = nextAction !== 'Đã hoàn tất'
+                            && !nextAction.startsWith('Không có bước');
+                    if (isActionable) actionableOrderCount++;
+                    else skippedCount++;
+
+                    const reviewRow = document.createElement('tr');
+                    appendCell(reviewRow, '#' + checkbox.value);
+                    appendCell(reviewRow, orderRow.querySelector('.admin-order-customer').textContent.trim());
+                    appendCell(reviewRow, status);
+                    const actionCell = appendCell(reviewRow, nextAction);
+                    if (!isActionable) {
+                        actionCell.classList.add('text-muted');
+                    } else {
+                        actionCell.classList.add('fw-semibold', 'text-primary');
+                    }
+                    reviewRows.appendChild(reviewRow);
+                });
+
+                reviewSummary.textContent = 'Đã chọn ' + selected.length + ' đơn. '
+                        + actionableOrderCount + ' đơn sẽ được chuyển trạng thái; '
+                        + skippedCount + ' đơn không có bước xử lý tiếp theo và sẽ được giữ nguyên.';
+                confirmBulkAction.disabled = actionableOrderCount === 0;
+                confirmBulkAction.textContent = actionableOrderCount > 0
+                        ? 'Xác nhận xử lý ' + actionableOrderCount + ' đơn'
+                        : 'Không có đơn cần xử lý';
+                bootstrap.Modal.getOrCreateInstance(reviewModalElement).show();
+            }
+
+            selectAll.addEventListener('change', function() {
+                visibleCheckboxes().forEach(function(checkbox) {
+                    checkbox.checked = selectAll.checked;
+                });
+                updateSelection();
+            });
+            checkboxes.forEach(function(checkbox) {
+                checkbox.addEventListener('change', updateSelection);
+            });
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    setActiveTab(tab.dataset.orderTab);
+                });
+            });
+            submitButton.addEventListener('click', showReviewModal);
+            confirmBulkAction.addEventListener('click', function() {
+                if (actionableOrderCount === 0) return;
+
+                form.querySelectorAll('input[name="orderIds"]').forEach(function(input) {
+                    input.remove();
+                });
+                checkboxes.filter(function(checkbox) {
+                    return checkbox.checked;
+                }).forEach(function(checkbox) {
+                    const orderIdInput = document.createElement('input');
+                    orderIdInput.type = 'hidden';
+                    orderIdInput.name = 'orderIds';
+                    orderIdInput.value = checkbox.value;
+                    form.appendChild(orderIdInput);
+                });
+                form.requestSubmit();
+            });
+
+            ['pending', 'confirmed', 'shipping', 'delivered', 'closed'].forEach(function(group) {
+                const countElement = document.querySelector('[data-order-tab-count="' + group + '"]');
+                if (countElement) {
+                    countElement.textContent = orderRows.filter(function(row) {
+                        return row.dataset.orderGroup === group;
+                    }).length;
+                }
+            });
+            setActiveTab(activeTab);
+        })();
+    </script>
+
+    <script>
+        (function() {
             const dialog = document.getElementById('orderActionConfirm');
             const message = document.getElementById('orderConfirmMessage');
             const submitButton = dialog.querySelector('[data-confirm-submit]');
@@ -541,7 +799,7 @@
 
             const columns = Array.from(table.querySelectorAll('colgroup col'));
             const headers = Array.from(table.querySelectorAll('thead th'));
-            const minimumWidths = [72, 140, 190, 118, 170, 80, 80, 148, 230];
+            const minimumWidths = [44, 72, 140, 180, 118, 170, 96, 90, 148, 230];
             if (columns.length !== headers.length || columns.length !== minimumWidths.length) return;
 
             const widths = columns.map(function(column) {

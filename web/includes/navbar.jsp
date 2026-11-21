@@ -5,13 +5,8 @@
     User currentUser = (User) session.getAttribute("user");
     // Lấy giỏ hàng từ Session
     List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
-    // Đếm tổng số lượng món hàng trong giỏ
-    int cartCount = 0;
-    if (cart != null) {
-        for (CartItem item : cart) {
-            cartCount += item.getQuantity();
-        }
-    }
+    // Hiển thị số dòng sản phẩm trong giỏ, không cộng số lượng từng dòng
+    int cartCount = cart != null ? cart.size() : 0;
 %>
 
 <!-- Thanh Điều Hướng Trên Cùng (Navbar) -->

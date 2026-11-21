@@ -1566,15 +1566,39 @@ body.admin-mode {
 }
 
 .admin-orders-table {
-    width: 1260px;
-    min-width: 1228px;
+    width: 1432px;
+    min-width: 1360px;
     table-layout: fixed;
 }
 
 .admin-orders-table thead th {
     position: relative;
-    padding: 12px 10px;
+    padding: 14px 14px;
     font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.admin-orders-table tbody td {
+    padding: 14px 14px;
+}
+
+.admin-order-select {
+    width: 44px;
+    min-width: 44px;
+    padding-right: 8px !important;
+    padding-left: 8px !important;
+}
+
+.admin-order-bulk-toolbar {
+    min-height: 42px;
+}
+
+.admin-order-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+}
+
+.admin-order-tabs .nav-link {
     white-space: nowrap;
 }
 
@@ -1633,7 +1657,7 @@ body.admin-column-resizing {
 }
 
 .admin-order-email {
-    min-width: 190px;
+    min-width: 180px;
     max-width: 230px;
     overflow-wrap: anywhere;
 }
