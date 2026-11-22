@@ -100,7 +100,7 @@
             <div class="bg-white p-4 rounded-4 border shadow-sm">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <span class="text-muted small fw-bold">TỔNG DOANH THU</span>
+                        <span class="text-muted small fw-bold" title="Chỉ tính các đơn hàng đã giao hàng thành công (khách nhận hàng)">TỔNG DOANH THU</span>
                         <h3 class="fw-extrabold text-danger m-0 mt-1">
                             <%= fmt.format(totalRevenue) %> đ
                         </h3>

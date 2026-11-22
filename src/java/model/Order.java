@@ -286,6 +286,16 @@ public class Order implements Serializable {
     }
 
     /**
+     * Kiểm tra đơn hàng đã giao thành công (khách nhận hàng) hay chưa
+     * @return true nếu trạng thái là DELIVERED, COMPLETED, hoặc DA_GIAO
+     */
+    public boolean isDelivered() {
+        if (status == null) return false;
+        String s = status.trim().toUpperCase();
+        return "DELIVERED".equals(s) || "COMPLETED".equals(s) || "DA_GIAO".equals(s);
+    }
+
+    /**
      * Lấy văn bản trạng thái hiển thị bằng Tiếng Việt
      * Các trạng thái chuẩn:
      * - Chờ xác nhận (PENDING, CHO_XAC_NHAN, UNPAID)

@@ -122,14 +122,14 @@ public class AdminDashboardController extends HttpServlet {
         List<Product> products = productDAO.getAllProducts(); // Lấy toàn bộ sản phẩm
         List<Order> orders = orderDAO.getAllOrders();         // Lấy toàn bộ đơn hàng
 
-        double totalRevenue = 0;       // Tổng doanh thu bán hàng
+        double totalRevenue = 0;       // Tổng doanh thu bán hàng (chỉ tính đơn giao thành công)
         int pendingOrdersCount = 0;    // Số đơn hàng đang chờ duyệt
 
         // Duyệt qua từng đơn hàng để tính toán tổng doanh thu và đếm đơn chờ xử lý
         for (Order o : orders) {
-            // Không tính các đơn đã bị hủy vào doanh thu
-            if (!"CANCELLED".equalsIgnoreCase(o.getStatus())) {
-                totalRevenue += o.getTotalMoney(); // Cộng dồn tiền đơn hàng
+            // Tổng doanh thu chỉ được tính khi đơn hàng đã giao hàng thành công (khách nhận hàng)
+            if (o.isDelivered()) {
+                totalRevenue += o.getTotalMoney(); // Cộng dồn tiền đơn hàng đã giao thành công
             }
             if ("PENDING".equalsIgnoreCase(o.getStatus()) || "CHO_XAC_NHAN".equalsIgnoreCase(o.getStatus()) || "UNPAID".equalsIgnoreCase(o.getStatus())) {
                 pendingOrdersCount++;          // Tăng biến đếm đơn chờ xác nhận
