@@ -80,12 +80,18 @@ public class LoginController extends HttpServlet {
                 return;
             }
 
-            // Kiểm tra quyền hạn của người dùng
+            // Điều hướng thông minh theo 6 vai trò người dùng (Enterprise Multi-Portal)
             if (user.isAdmin()) {
-                // Nếu là tài khoản Admin (role = 1): Chuyển hướng sang trang quản trị Dashboard
                 response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+            } else if (user.isWarehouse()) {
+                response.sendRedirect(request.getContextPath() + "/warehouse/dashboard");
+            } else if (user.isLogistics()) {
+                response.sendRedirect(request.getContextPath() + "/logistics/dashboard");
+            } else if (user.isHub()) {
+                response.sendRedirect(request.getContextPath() + "/hub/dashboard");
+            } else if (user.isShipper()) {
+                response.sendRedirect(request.getContextPath() + "/shipper/dashboard");
             } else {
-                // Nếu là tài khoản Khách hàng (role = 0): Chuyển hướng về trang chủ mua sắm
                 response.sendRedirect(request.getContextPath() + "/home");
             }
         } else {

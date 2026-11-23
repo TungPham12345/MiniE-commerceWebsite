@@ -303,6 +303,28 @@ public class OrderDAO {
         return false;
     }
 
+    /**
+     * Cập nhật trạng thái đơn hàng kèm theo ghi vết nhật ký hành trình (Tracking History)
+     */
+    public boolean updateOrderStatus(int orderId, String status, model.User actor, String location, String note) {
+        boolean ok = updateOrderStatus(orderId, status);
+        if (ok) {
+            try {
+                OrderTrackingDAO trackingDAO = new OrderTrackingDAO();
+                model.Order sample = new model.Order();
+                sample.setStatus(status);
+                String statusName = sample.getStatusVietnamese();
+                Integer actorId = actor != null ? actor.getId() : null;
+                String actorName = actor != null ? actor.getFullname() : "Hệ thống";
+                Integer actorRole = actor != null ? actor.getRole() : null;
+                trackingDAO.addTracking(orderId, status, statusName, actorId, actorName, actorRole, location, note);
+            } catch (Exception e) {
+                System.err.println("⚠️ Record tracking failed: " + e.getMessage());
+            }
+        }
+        return ok;
+    }
+
     private boolean transitionOrderStock(int orderId, String newStatus) {
         Connection conn = null;
         try {

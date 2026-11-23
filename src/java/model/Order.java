@@ -316,15 +316,39 @@ public class Order implements Serializable {
             case "CONFIRMED":
             case "CHO_LAY_HANG":
             case "PROCESSING":
-                return "Chờ lấy hàng";
+                return "Đã xác nhận";
+            case "PICKING":
+                return "Đang lấy hàng";
+            case "PACKED":
+                return "Đã đóng gói";
+            case "HANDOVER_PENDING":
+                return "Chờ bàn giao ĐVVC";
+            case "CARRIER_RECEIVED":
+                return "ĐVVC đã tiếp nhận";
+            case "CARRIER_CHECKED":
+                return "ĐVVC đã kiểm tra";
+            case "IN_TRANSIT":
+                return "Đang trung chuyển";
+            case "ARRIVED_HUB":
+                return "Đã đến kho phát";
+            case "HUB_CHECKED":
+                return "Kho phát đã kiểm đếm";
+            case "SHIPPER_ASSIGNED":
+                return "Shipper đã nhận đơn";
+            case "DELIVERING":
             case "SHIPPING":
-            case "CHO_GIAO_HANG":
             case "VAN_CHUYEN":
+                return "Đang giao hàng";
+            case "ARRIVED_DOORSTEP":
+                return "Đã đến điểm giao";
+            case "PAYMENT_DONE":
+                return "Đã thanh toán (COD)";
+            case "CHO_GIAO_HANG":
                 return "Chờ giao hàng";
             case "DELIVERED":
             case "COMPLETED":
             case "DA_GIAO":
-                return "Đã giao";
+                return "Giao thành công";
             case "RETURNED":
             case "REFUNDED":
             case "TRA_HANG":
@@ -352,8 +376,9 @@ public class Order implements Serializable {
             case "CHO_LAY_HANG":
             case "PROCESSING":
                 return "bi-box-seam";
-            case "SHIPPING":
             case "CHO_GIAO_HANG":
+                return "bi-clock-history";
+            case "SHIPPING":
             case "VAN_CHUYEN":
                 return "bi-truck";
             case "DELIVERED":
@@ -387,8 +412,9 @@ public class Order implements Serializable {
             case "CHO_LAY_HANG":
             case "PROCESSING":
                 return "bg-info-subtle text-info-emphasis border border-info-subtle";
-            case "SHIPPING":
             case "CHO_GIAO_HANG":
+                return "bg-warning-subtle text-warning-emphasis border border-warning-subtle";
+            case "SHIPPING":
             case "VAN_CHUYEN":
                 return "bg-primary-subtle text-primary border border-primary-subtle";
             case "DELIVERED":

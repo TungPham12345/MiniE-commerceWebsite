@@ -142,7 +142,12 @@
             </li>
             <li class="nav-item" role="presentation">
                 <button type="button" class="nav-link" data-order-tab="confirmed" role="tab" aria-selected="false">
-                    Đã xác nhận / Đang đóng gói <span class="badge bg-secondary ms-1" data-order-tab-count="confirmed">0</span>
+                    Chờ lấy hàng <span class="badge bg-secondary ms-1" data-order-tab-count="confirmed">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link" data-order-tab="ready_to_ship" role="tab" aria-selected="false">
+                    Chờ giao hàng <span class="badge bg-secondary ms-1" data-order-tab-count="ready_to_ship">0</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -211,7 +216,9 @@
                                 orderGroup = "pending";
                             } else if ("CONFIRMED".equals(ost) || "CHO_LAY_HANG".equals(ost) || "PROCESSING".equals(ost)) {
                                 orderGroup = "confirmed";
-                            } else if ("SHIPPING".equals(ost) || "CHO_GIAO_HANG".equals(ost) || "VAN_CHUYEN".equals(ost)) {
+                            } else if ("CHO_GIAO_HANG".equals(ost)) {
+                                orderGroup = "ready_to_ship";
+                            } else if ("SHIPPING".equals(ost) || "VAN_CHUYEN".equals(ost)) {
                                 orderGroup = "shipping";
                             } else if ("DELIVERED".equals(ost) || "COMPLETED".equals(ost) || "DA_GIAO".equals(ost)) {
                                 orderGroup = "delivered";
@@ -249,9 +256,11 @@
                                     %>
                                         <span class="badge bg-success px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i>Đã giao</span>
                                     <% } else if ("CONFIRMED".equals(ost) || "CHO_LAY_HANG".equals(ost) || "PROCESSING".equals(ost)) { %>
-                                        <span class="badge bg-info text-dark px-3 py-2 rounded-pill"><i class="bi bi-box-seam me-1"></i>Chờ lấy hàng</span>
-                                    <% } else if ("SHIPPING".equals(ost) || "CHO_GIAO_HANG".equals(ost) || "VAN_CHUYEN".equals(ost)) { %>
-                                        <span class="badge bg-primary px-3 py-2 rounded-pill"><i class="bi bi-truck me-1"></i>Chờ giao hàng</span>
+                                        <span class="badge bg-info text-dark px-3 py-2 rounded-pill"><i class="bi bi-check2-circle me-1"></i>Đã xác nhận</span>
+                                    <% } else if ("CHO_GIAO_HANG".equals(ost)) { %>
+                                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill"><i class="bi bi-clock-history me-1"></i>Chờ giao hàng</span>
+                                    <% } else if ("SHIPPING".equals(ost) || "VAN_CHUYEN".equals(ost)) { %>
+                                        <span class="badge bg-primary px-3 py-2 rounded-pill"><i class="bi bi-truck me-1"></i>Đang giao hàng</span>
                                     <% } else if ("RETURNED".equals(ost) || "REFUNDED".equals(ost) || "TRA_HANG".equals(ost)) { %>
                                         <span class="badge bg-secondary px-3 py-2 rounded-pill"><i class="bi bi-arrow-counterclockwise me-1"></i>Trả hàng</span>
                                     <% } else if ("CANCELLED".equals(ost) || "DA_HUY".equals(ost)) { %>
@@ -284,11 +293,25 @@
                                                 <i class="bi bi-x-lg"></i>
                                             </a>
                                         <% } else if ("CONFIRMED".equals(ost) || "CHO_LAY_HANG".equals(ost) || "PROCESSING".equals(ost)) { %>
-                                            <!-- 2. Đã xác nhận -> Giao cho đơn vị vận chuyển -> Chờ giao hàng -->
+                                            <!-- 2. Đã xác nhận -> Lấy hàng -> Chờ giao hàng -->
+                                            <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=CHO_GIAO_HANG" 
+                                               class="btn btn-sm btn-primary rounded-pill fw-bold px-3 py-1 shadow-sm text-nowrap"
+                                               data-confirm-message="Xác nhận lấy hàng cho đơn #<%= o.getId() %> và chuyển sang 'Chờ giao hàng'?"
+                                               data-confirm-label="Lấy hàng" data-confirm-variant="primary" title="Lấy hàng">
+                                                <i class="bi bi-box-seam me-1"></i>Lấy hàng
+                                            </a>
+                                            <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=CANCELLED" 
+                                               class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1"
+                                               data-confirm-message="Bạn có chắc muốn hủy đơn hàng #<%= o.getId() %>?"
+                                               data-confirm-label="Hủy đơn" data-confirm-variant="danger" title="Hủy đơn hàng">
+                                                <i class="bi bi-x-lg"></i>
+                                            </a>
+                                        <% } else if ("CHO_GIAO_HANG".equals(ost)) { %>
+                                            <!-- 3. Chờ giao hàng -> Giao hàng -> Đang giao hàng -->
                                             <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=SHIPPING" 
-                                               class="btn btn-sm btn-primary rounded-pill fw-bold px-3 py-1 shadow-sm"
-                                               data-confirm-message="Giao đơn hàng #<%= o.getId() %> cho ĐVVC (Chuyển sang 'Chờ giao hàng')?"
-                                               data-confirm-label="Giao cho ĐVVC" data-confirm-variant="primary">
+                                               class="btn btn-sm btn-primary rounded-pill fw-bold px-3 py-1 shadow-sm text-nowrap"
+                                               data-confirm-message="Bắt đầu xuất kho giao đơn hàng #<%= o.getId() %> (Chuyển sang 'Đang giao hàng')?"
+                                               data-confirm-label="Giao hàng" data-confirm-variant="primary" title="Giao hàng">
                                                 <i class="bi bi-truck me-1"></i>Giao hàng
                                             </a>
                                             <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=CANCELLED" 
@@ -297,14 +320,14 @@
                                                data-confirm-label="Hủy đơn" data-confirm-variant="danger" title="Hủy đơn hàng">
                                                 <i class="bi bi-x-lg"></i>
                                             </a>
-                                        <% } else if ("SHIPPING".equals(ost) || "CHO_GIAO_HANG".equals(ost) || "VAN_CHUYEN".equals(ost)) { %>
-                                            <!-- 3. Đang giao -> Đã giao thành công -->
-                                            <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=DELIVERED" 
-                                               class="btn btn-sm btn-success rounded-pill fw-bold px-3 py-1 shadow-sm"
-                                               data-confirm-message="Xác nhận đơn hàng #<%= o.getId() %> đã giao thành công?"
-                                               data-confirm-label="Đã giao" data-confirm-variant="success">
-                                                <i class="bi bi-check2-circle me-1"></i>Đã giao
-                                            </a>
+                                        <% } else if ("SHIPPING".equals(ost) || "VAN_CHUYEN".equals(ost)) { %>
+                                            <!-- 3. Đang giao -> Giao thành công -->
+                                             <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=DELIVERED" 
+                                                class="btn btn-sm btn-success rounded-pill fw-bold px-3 py-1 shadow-sm text-nowrap"
+                                                data-confirm-message="Xác nhận đơn hàng #<%= o.getId() %> đã giao thành công?"
+                                                data-confirm-label="Giao thành công" data-confirm-variant="success" title="Xác nhận giao thành công">
+                                                 <i class="bi bi-check2-circle me-1"></i>Giao thành công
+                                             </a>
                                             <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=RETURNED" 
                                                class="btn btn-sm btn-outline-warning rounded-pill px-2 py-1"
                                                data-confirm-message="Giao thất bại hoặc khách trả hàng? Chuyển đơn #<%= o.getId() %> sang Trả hàng?"
@@ -487,6 +510,28 @@
                                 </table>
                             </div>
 
+                            <!-- Lịch sử hành trình đơn hàng chi tiết -->
+                            <%
+                                dao.OrderTrackingDAO trackingDAOAdmin = new dao.OrderTrackingDAO();
+                                java.util.List<model.OrderTracking> adminTrackings = trackingDAOAdmin.getTrackingsByOrderId(o.getId());
+                            %>
+                            <% if (adminTrackings != null && !adminTrackings.isEmpty()) { %>
+                                <div class="bg-light p-3 rounded-3 border mb-3">
+                                    <h6 class="fw-bold mb-2 text-primary"><i class="bi bi-clock-history me-2"></i>Nhật Ký Hành Trình Đơn Hàng (Supply Chain Tracking)</h6>
+                                    <div class="ps-2 border-start border-2 border-primary ms-1 small">
+                                        <% for (model.OrderTracking tr : adminTrackings) { %>
+                                            <div class="mb-2 ps-3">
+                                                <span class="fw-bold text-dark"><i class="bi bi-check2-circle text-success me-1"></i><%= tr.getStatusName() %></span>
+                                                <span class="text-muted ms-2">• <%= tr.getActorName() %> <%= tr.getLocation() != null ? "• " + tr.getLocation() : "" %> • <%= tr.getFormattedTime() %></span>
+                                                <% if (tr.getNote() != null && !tr.getNote().isEmpty()) { %>
+                                                    <div class="text-secondary fst-italic">"<%= tr.getNote() %>"</div>
+                                                <% } %>
+                                            </div>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            <% } %>
+
                             <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded-3 border">
                                 <span class="fw-bold fs-6">TỔNG CỘNG THANH TOÁN:</span>
                                 <span class="fw-extrabold text-danger fs-5 text-nowrap"><%= fmt.format(o.getTotalMoney()) %>&nbsp;đ</span>
@@ -512,11 +557,11 @@
                                         <i class="bi bi-x-lg me-1"></i>Hủy Đơn
                                     </a>
                                 <% } else if ("CONFIRMED".equalsIgnoreCase(o.getStatus()) || "CHO_LAY_HANG".equalsIgnoreCase(o.getStatus()) || "PROCESSING".equalsIgnoreCase(o.getStatus())) { %>
-                                    <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=SHIPPING" 
+                                    <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=CHO_GIAO_HANG" 
                                        class="btn btn-primary rounded-pill fw-bold px-3"
-                                       data-confirm-message="Giao đơn hàng #<%= o.getId() %> cho ĐVVC (Chuyển sang 'Chờ giao hàng')?"
-                                       data-confirm-label="Giao cho ĐVVC" data-confirm-variant="primary">
-                                        <i class="bi bi-truck me-1"></i>Giao Cho ĐVVC
+                                       data-confirm-message="Xác nhận lấy hàng cho đơn #<%= o.getId() %> và chuyển sang 'Chờ giao hàng'?"
+                                       data-confirm-label="Lấy hàng" data-confirm-variant="primary">
+                                        <i class="bi bi-box-seam me-1"></i>Lấy Hàng
                                     </a>
                                     <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=CANCELLED" 
                                        class="btn btn-outline-danger rounded-pill fw-medium px-3"
@@ -524,12 +569,25 @@
                                        data-confirm-label="Hủy đơn" data-confirm-variant="danger">
                                         <i class="bi bi-x-lg me-1"></i>Hủy Đơn
                                     </a>
-                                <% } else if ("SHIPPING".equalsIgnoreCase(o.getStatus()) || "CHO_GIAO_HANG".equalsIgnoreCase(o.getStatus()) || "VAN_CHUYEN".equalsIgnoreCase(o.getStatus())) { %>
+                                <% } else if ("CHO_GIAO_HANG".equalsIgnoreCase(o.getStatus())) { %>
+                                    <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=SHIPPING" 
+                                       class="btn btn-primary rounded-pill fw-bold px-3"
+                                       data-confirm-message="Bắt đầu xuất kho giao đơn hàng #<%= o.getId() %> (Chuyển sang 'Đang giao hàng')?"
+                                       data-confirm-label="Giao hàng" data-confirm-variant="primary">
+                                        <i class="bi bi-truck me-1"></i>Giao Hàng
+                                    </a>
+                                    <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=CANCELLED" 
+                                       class="btn btn-outline-danger rounded-pill fw-medium px-3"
+                                       data-confirm-message="Hủy đơn hàng #<%= o.getId() %>?"
+                                       data-confirm-label="Hủy đơn" data-confirm-variant="danger">
+                                        <i class="bi bi-x-lg me-1"></i>Hủy Đơn
+                                    </a>
+                                <% } else if ("SHIPPING".equalsIgnoreCase(o.getStatus()) || "VAN_CHUYEN".equalsIgnoreCase(o.getStatus())) { %>
                                     <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=DELIVERED" 
                                        class="btn btn-success rounded-pill fw-bold px-3"
                                        data-confirm-message="Xác nhận đơn hàng #<%= o.getId() %> đã giao thành công?"
-                                       data-confirm-label="Đã giao" data-confirm-variant="success">
-                                        <i class="bi bi-check2-circle me-1"></i>Xác Nhận Đã Giao
+                                       data-confirm-label="Giao thành công" data-confirm-variant="success">
+                                         <i class="bi bi-check2-circle me-1"></i>Giao Thành Công
                                     </a>
                                     <a href="${pageContext.request.contextPath}/admin/dashboard?action=updateStatus&orderId=<%= o.getId() %>&status=RETURNED" 
                                        class="btn btn-outline-warning rounded-pill fw-medium px-3"
@@ -655,8 +713,9 @@
 
             function getNextAction(status) {
                 if (status.includes('Chờ xác nhận')) return 'Xác nhận → Chờ lấy hàng';
-                if (status.includes('Chờ lấy hàng')) return 'Giao hàng → Chờ giao';
-                if (status.includes('Chờ giao hàng')) return 'Xác nhận đã giao';
+                if (status.includes('Đã xác nhận') || status.includes('Chờ lấy hàng')) return 'Lấy hàng → Chờ giao';
+                if (status.includes('Chờ giao')) return 'Giao hàng → Đang giao';
+                if (status.includes('Đang giao')) return 'Giao thành công → Đã giao';
                 if (status.includes('Đã giao')) return 'Đã hoàn tất';
                 return 'Không có bước xử lý tự động';
             }
@@ -743,7 +802,7 @@
                 form.requestSubmit();
             });
 
-            ['pending', 'confirmed', 'shipping', 'delivered', 'closed'].forEach(function(group) {
+            ['pending', 'confirmed', 'ready_to_ship', 'shipping', 'delivered', 'closed'].forEach(function(group) {
                 const countElement = document.querySelector('[data-order-tab-count="' + group + '"]');
                 if (countElement) {
                     countElement.textContent = orderRows.filter(function(row) {

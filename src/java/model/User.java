@@ -25,7 +25,33 @@ public class User implements Serializable {
     // Địa chỉ thường trú hoặc địa chỉ nhận hàng mặc định
     private String address;
     // Vai trò tài khoản: 0 = Khách hàng (Customer), 1 = Quản trị viên (Admin)
+    public static final int ROLE_CUSTOMER = 0;
+    public static final int ROLE_ADMIN = 1;
+    public static final int ROLE_WAREHOUSE = 2;
+    public static final int ROLE_LOGISTICS = 3;
+    public static final int ROLE_HUB = 4;
+    public static final int ROLE_SHIPPER = 5;
+
+    // Vai trò tài khoản: 0=Khách hàng, 1=Admin, 2=Kho Shop, 3=ĐVVC, 4=Kho Hub, 5=Shipper
     private int role;
+
+    public boolean isCustomer() { return role == ROLE_CUSTOMER; }
+    public boolean isAdmin() { return role == ROLE_ADMIN; }
+    public boolean isWarehouse() { return role == ROLE_WAREHOUSE; }
+    public boolean isLogistics() { return role == ROLE_LOGISTICS; }
+    public boolean isHub() { return role == ROLE_HUB; }
+    public boolean isShipper() { return role == ROLE_SHIPPER; }
+
+    public String getRoleName() {
+        switch (role) {
+            case ROLE_ADMIN: return "Quản Trị Viên (Admin)";
+            case ROLE_WAREHOUSE: return "Nhân Viên Kho Shop";
+            case ROLE_LOGISTICS: return "Điều Phối ĐVVC";
+            case ROLE_HUB: return "Thủ Kho Bưu Cục Phát";
+            case ROLE_SHIPPER: return "Nhân Viên Giao Hàng (Shipper)";
+            default: return "Khách Hàng";
+        }
+    }
     // Thời điểm đăng ký tài khoản
     private Timestamp createdAt;
 
@@ -185,13 +211,7 @@ public class User implements Serializable {
         this.role = role;
     }
 
-    /**
-     * Kiểm tra người dùng có phải là Quản trị viên (Admin) hay không
-     * @return true nếu role == 1, ngược lại false
-     */
-    public boolean isAdmin() {
-        return this.role == 1;
-    }
+
 
     /**
      * Lấy thời điểm tạo tài khoản

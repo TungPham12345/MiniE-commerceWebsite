@@ -132,8 +132,8 @@ public class MyOrdersController extends HttpServlet {
 
         // Lấy tab đang chọn (mặc định: 'all')
         String tab = request.getParameter("tab");
-        if (tab == null || tab.trim().isEmpty()) {
-            tab = "all";
+        if (tab == null || tab.trim().isEmpty() || "all".equalsIgnoreCase(tab.trim())) {
+            tab = "pending";
         } else {
             tab = tab.trim().toLowerCase();
         }
@@ -182,9 +182,8 @@ public class MyOrdersController extends HttpServlet {
                 case "da-huy":
                     matchTab = "CANCELLED".equals(st) || "DA_HUY".equals(st);
                     break;
-                case "all":
                 default:
-                    matchTab = true;
+                    matchTab = false;
                     break;
             }
 

@@ -68,8 +68,10 @@ public class AdminDashboardController extends HttpServlet {
                         String msg = "Cập nhật đơn hàng #" + orderId + " thành công!";
                         if ("CONFIRMED".equals(newStatus)) {
                             msg = "🎉 Đã xác nhận đơn hàng #" + orderId + "! Đơn chuyển sang trạng thái 'Chờ lấy hàng'.";
+                        } else if ("CHO_GIAO_HANG".equals(newStatus)) {
+                            msg = "📦 Đã lấy hàng cho đơn #" + orderId + "! Đơn chuyển sang trạng thái 'Chờ giao hàng'.";
                         } else if ("SHIPPING".equals(newStatus)) {
-                            msg = "🚚 Đã chuyển đơn hàng #" + orderId + " sang trạng thái 'Chờ giao hàng'!";
+                            msg = "🚚 Đã xuất kho đơn hàng #" + orderId + " sang trạng thái 'Đang giao hàng'!";
                         } else if ("DELIVERED".equals(newStatus)) {
                             msg = "✅ Đã xác nhận giao thành công đơn hàng #" + orderId + " (Đã giao)!";
                         } else if ("RETURNED".equals(newStatus)) {
@@ -262,9 +264,10 @@ public class AdminDashboardController extends HttpServlet {
             case "CONFIRMED":
             case "CHO_LAY_HANG":
             case "PROCESSING":
+                return "CHO_GIAO_HANG";
+            case "CHO_GIAO_HANG":
                 return "SHIPPING";
             case "SHIPPING":
-            case "CHO_GIAO_HANG":
             case "VAN_CHUYEN":
                 return "DELIVERED";
             default:

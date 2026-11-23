@@ -12,7 +12,7 @@
     // Lấy danh sách đơn hàng đã được lọc từ Controller
     List<Order> orders = (List<Order>) request.getAttribute("orders");
     String activeTab = (String) request.getAttribute("activeTab");
-    if (activeTab == null) activeTab = "all";
+    if (activeTab == null) activeTab = "pending";
     String keyword = (String) request.getAttribute("keyword");
     if (keyword == null) keyword = "";
 
@@ -277,16 +277,6 @@
     <!-- 1. Thanh Tabs Trạng Thái Đơn Hàng: Tất cả - Chờ xác nhận - Chờ lấy hàng - Chờ giao hàng - Đã giao - Trả hàng - Đã hủy -->
     <div class="shopee-tabs-wrapper">
         <ul class="shopee-nav-tabs">
-            <!-- 1. Tab: Tất cả -->
-            <li class="shopee-nav-item">
-                <a class="shopee-nav-link <%= "all".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
-                   href="${pageContext.request.contextPath}/my-orders?tab=all">
-                    Tất cả
-                    <% if (countAll > 0) { %>
-                        <span class="badge <%= "all".equalsIgnoreCase(activeTab) ? "bg-danger" : "bg-secondary-subtle text-secondary" %> shopee-tab-badge"><%= countAll %></span>
-                    <% } %>
-                </a>
-            </li>
             <!-- 2. Tab: Chờ xác nhận -->
             <li class="shopee-nav-item">
                 <a class="shopee-nav-link <%= "pending".equalsIgnoreCase(activeTab) || "unpaid".equalsIgnoreCase(activeTab) || "cho-xac-nhan".equalsIgnoreCase(activeTab) ? "active" : "" %>" 
@@ -644,6 +634,34 @@
                             </div>
                         </div>
 
+                        <!-- Nhật Ký Hành Trình Vận Chuyển Chi Tiết (Tracking History) -->
+                        <%
+                            dao.OrderTrackingDAO trackingDAO = new dao.OrderTrackingDAO();
+                            java.util.List<model.OrderTracking> trackings = trackingDAO.getTrackingsByOrderId(o.getId());
+                        %>
+                        <% if (trackings != null && !trackings.isEmpty()) { %>
+                            <div class="bg-light p-3 rounded-3 mb-4 border">
+                                <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-clock-history me-2"></i>Nhật Ký Hành Trình Vận Chuyển (Real-time Tracking)</h6>
+                                <div class="ps-2 border-start border-2 border-primary ms-1">
+                                    <% for (model.OrderTracking tr : trackings) { %>
+                                        <div class="mb-3 ps-3 position-relative">
+                                            <div class="fw-bold text-dark"><i class="bi bi-check-circle-fill text-success me-1"></i><%= tr.getStatusName() %></div>
+                                            <div class="small text-muted">
+                                                <i class="bi bi-person me-1"></i><%= tr.getActorName() %> 
+                                                <% if (tr.getLocation() != null && !tr.getLocation().isEmpty()) { %>
+                                                    • <i class="bi bi-geo-alt me-1"></i><%= tr.getLocation() %>
+                                                <% } %>
+                                                • <i class="bi bi-clock me-1"></i><%= tr.getFormattedTime() %>
+                                            </div>
+                                            <% if (tr.getNote() != null && !tr.getNote().isEmpty()) { %>
+                                                <div class="small text-secondary fst-italic mt-1">"<%= tr.getNote() %>"</div>
+                                            <% } %>
+                                        </div>
+                                    <% } %>
+                                </div>
+                            </div>
+                        <% } %>
+
                         <!-- Bảng Kê Chi Tiết Mặt Hàng -->
                         <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-bag-fill text-danger me-2"></i>Sản Phẩm Đã Mua</h6>
                         <div class="table-responsive mb-4">
@@ -813,7 +831,7 @@
             });
             if (emptyState) emptyState.classList.add('d-none');
             try {
-                const activeTab = document.getElementById('currentActiveTab') ? document.getElementById('currentActiveTab').value : 'all';
+                const activeTab = document.getElementById('currentActiveTab') ? document.getElementById('currentActiveTab').value : 'pending';
                 const cleanUrl = window.location.pathname + '?tab=' + encodeURIComponent(activeTab);
                 window.history.replaceState({}, document.title, cleanUrl);
             } catch(e) {}
@@ -882,7 +900,7 @@
 
         // Cập nhật URL trình duyệt (không reload)
         try {
-            const activeTab = document.getElementById('currentActiveTab') ? document.getElementById('currentActiveTab').value : 'all';
+            const activeTab = document.getElementById('currentActiveTab') ? document.getElementById('currentActiveTab').value : 'pending';
             const newUrl = window.location.pathname + '?tab=' + encodeURIComponent(activeTab) + '&keyword=' + encodeURIComponent(query);
             window.history.replaceState({}, document.title, newUrl);
         } catch(e) {}

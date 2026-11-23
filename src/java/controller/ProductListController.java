@@ -53,7 +53,6 @@ public class ProductListController extends HttpServlet {
         String sort = request.getParameter("sort");
         String size = request.getParameter("size");
         String color = request.getParameter("color");
-        String priceRange = request.getParameter("priceRange");
 
         List<Product> products = null;
         Category currentCategory = null;
@@ -105,27 +104,7 @@ public class ProductListController extends HttpServlet {
             products = filtered;
         }
 
-        // 5. Xử lý lọc theo khoảng giá (Price Range Filter)
-        if (priceRange != null && !priceRange.isEmpty()) {
-            List<Product> filtered = new ArrayList<>();
-            for (Product p : products) {
-                double effPrice = p.getEffectivePrice();
-                if ("under_500k".equals(priceRange) && effPrice < 500000) {
-                    filtered.add(p);
-                } else if ("500k_1m".equals(priceRange) && effPrice >= 500000 && effPrice <= 1000000) {
-                    filtered.add(p);
-                } else if ("1m_2m".equals(priceRange) && effPrice > 1000000 && effPrice <= 2000000) {
-                    filtered.add(p);
-                } else if ("2m_3m".equals(priceRange) && effPrice > 2000000 && effPrice <= 3000000) {
-                    filtered.add(p);
-                } else if ("above_3m".equals(priceRange) && effPrice > 3000000) {
-                    filtered.add(p);
-                }
-            }
-            products = filtered;
-        }
-
-        // 6. Xử lý sắp xếp sản phẩm (Sorting)
+        // 5. Xử lý sắp xếp sản phẩm (Sorting)
         if ("price_asc".equalsIgnoreCase(sort)) {
             products.sort(Comparator.comparingDouble(Product::getEffectivePrice));
         } else if ("price_desc".equalsIgnoreCase(sort)) {
@@ -140,10 +119,10 @@ public class ProductListController extends HttpServlet {
             if (!featured.isEmpty()) products = featured;
         }
 
-        // 7. Lấy danh mục để hiển thị thanh menu phân loại
+        // 6. Lấy danh mục để hiển thị thanh menu phân loại
         List<Category> categories = categoryDAO.getAllCategories();
 
-        // 8. Đính kèm các thuộc tính vào request
+        // 7. Đính kèm các thuộc tính vào request
         request.setAttribute("products", products);
         request.setAttribute("categories", categories);
         request.setAttribute("currentCategory", currentCategory);
@@ -152,7 +131,6 @@ public class ProductListController extends HttpServlet {
         request.setAttribute("sort", sort);
         request.setAttribute("selectedSize", size);
         request.setAttribute("selectedColor", color);
-        request.setAttribute("selectedPriceRange", priceRange);
 
         // Chuyển tiếp tới trang giao diện shop.jsp
         request.getRequestDispatcher("shop.jsp").forward(request, response);

@@ -83,6 +83,39 @@
                                     </div>
                                     <div class="text-muted small text-truncate"><%= currentUser.getEmail() != null ? currentUser.getEmail() : currentUser.getUsername() %></div>
                                 </li>
+                                <li><a class="dropdown-item fw-semibold py-2" href="${pageContext.request.contextPath}/admin/dashboard"><i class="bi bi-speedometer2 me-2 text-danger"></i> Bảng điều khiển Admin</a></li>
+                            <% } else if (currentUser.isWarehouse()) { %>
+                                <li class="px-3 py-2 border-bottom mb-1 bg-light">
+                                    <div class="d-flex align-items-center gap-1 text-warning fw-bold small">
+                                        <i class="bi bi-box-seam"></i> KHO SHOP
+                                    </div>
+                                    <div class="text-muted small text-truncate"><%= currentUser.getEmail() != null ? currentUser.getEmail() : currentUser.getUsername() %></div>
+                                </li>
+                                <li><a class="dropdown-item fw-semibold py-2" href="${pageContext.request.contextPath}/warehouse/dashboard"><i class="bi bi-boxes me-2 text-warning"></i> Cổng Kho Shop</a></li>
+                            <% } else if (currentUser.isLogistics()) { %>
+                                <li class="px-3 py-2 border-bottom mb-1 bg-light">
+                                    <div class="d-flex align-items-center gap-1 text-primary fw-bold small">
+                                        <i class="bi bi-truck"></i> ĐVVC EXPRESS
+                                    </div>
+                                    <div class="text-muted small text-truncate"><%= currentUser.getEmail() != null ? currentUser.getEmail() : currentUser.getUsername() %></div>
+                                </li>
+                                <li><a class="dropdown-item fw-semibold py-2" href="${pageContext.request.contextPath}/logistics/dashboard"><i class="bi bi-truck me-2 text-primary"></i> Cổng ĐVVC Express</a></li>
+                            <% } else if (currentUser.isHub()) { %>
+                                <li class="px-3 py-2 border-bottom mb-1 bg-light">
+                                    <div class="d-flex align-items-center gap-1 text-success fw-bold small">
+                                        <i class="bi bi-buildings"></i> BƯU CỤC PHÁT
+                                    </div>
+                                    <div class="text-muted small text-truncate"><%= currentUser.getEmail() != null ? currentUser.getEmail() : currentUser.getUsername() %></div>
+                                </li>
+                                <li><a class="dropdown-item fw-semibold py-2" href="${pageContext.request.contextPath}/hub/dashboard"><i class="bi bi-building-check me-2 text-success"></i> Cổng Bưu Cục Phát</a></li>
+                            <% } else if (currentUser.isShipper()) { %>
+                                <li class="px-3 py-2 border-bottom mb-1 bg-light">
+                                    <div class="d-flex align-items-center gap-1 text-danger fw-bold small">
+                                        <i class="bi bi-bicycle"></i> SHIPPER
+                                    </div>
+                                    <div class="text-muted small text-truncate"><%= currentUser.getEmail() != null ? currentUser.getEmail() : currentUser.getUsername() %></div>
+                                </li>
+                                <li><a class="dropdown-item fw-semibold py-2" href="${pageContext.request.contextPath}/shipper/dashboard"><i class="bi bi-geo-alt me-2 text-danger"></i> Cổng Giao Hàng Shipper</a></li>
                             <% } else { %>
                                 <li class="px-3 py-2 border-bottom mb-1 bg-light">
                                     <div class="d-flex align-items-center gap-1 text-primary fw-bold small">

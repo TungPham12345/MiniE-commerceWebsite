@@ -8,11 +8,9 @@
     String sort = (String) request.getAttribute("sort");
     String selectedSize = (String) request.getAttribute("selectedSize");
     String selectedColor = (String) request.getAttribute("selectedColor");
-    String selectedPriceRange = (String) request.getAttribute("selectedPriceRange");
     if (sort == null) sort = "";
     if (selectedSize == null) selectedSize = "";
     if (selectedColor == null) selectedColor = "";
-    if (selectedPriceRange == null) selectedPriceRange = "";
     
     NumberFormat fmt = NumberFormat.getInstance(new Locale("vi", "VN"));
 %>
@@ -78,11 +76,11 @@
                             <input type="radio" name="sort" value="bestseller" class="filter-checkbox" <%= "bestseller".equals(sort) ? "checked" : "" %>>
                         </label>
                         <label class="filter-item-row">
-                            <span>Giá cao nhất</span>
+                            <span>Giá: Cao đến thấp</span>
                             <input type="radio" name="sort" value="price_desc" class="filter-checkbox" <%= "price_desc".equals(sort) ? "checked" : "" %>>
                         </label>
                         <label class="filter-item-row">
-                            <span>Giá thấp nhất</span>
+                            <span>Giá: Thấp đến cao</span>
                             <input type="radio" name="sort" value="price_asc" class="filter-checkbox" <%= "price_asc".equals(sort) ? "checked" : "" %>>
                         </label>
                     </div>
@@ -122,41 +120,12 @@
                                 };
                                 for (String[] col : colors) {
                                     boolean isActive = col[1].equalsIgnoreCase(selectedColor);
-                            %>
+                                %>
                                 <label class="color-circle <%= isActive ? "active" : "" %>" style="background-color: <%= col[0] %>;" title="<%= col[1] %>">
                                     <input type="radio" name="color" value="<%= col[1] %>" <%= isActive ? "checked" : "" %> onchange="this.form.submit()">
                                 </label>
                             <% } %>
                         </div>
-                    </div>
-                </div>
-
-                <!-- 4. KHOẢNG GIÁ -->
-                <div class="filter-group">
-                    <h6 class="filter-title mb-3" data-bs-toggle="collapse" data-bs-target="#priceCollapse">
-                        KHOẢNG GIÁ <i class="bi bi-chevron-up"></i>
-                    </h6>
-                    <div class="collapse show" id="priceCollapse">
-                        <label class="filter-item-row">
-                            <span>Dưới 500.000đ</span>
-                            <input type="radio" name="priceRange" value="under_500k" class="filter-checkbox" <%= "under_500k".equals(selectedPriceRange) ? "checked" : "" %>>
-                        </label>
-                        <label class="filter-item-row">
-                            <span>500.000đ - 1.000.000đ</span>
-                            <input type="radio" name="priceRange" value="500k_1m" class="filter-checkbox" <%= "500k_1m".equals(selectedPriceRange) ? "checked" : "" %>>
-                        </label>
-                        <label class="filter-item-row">
-                            <span>1.000.000đ - 2.000.000đ</span>
-                            <input type="radio" name="priceRange" value="1m_2m" class="filter-checkbox" <%= "1m_2m".equals(selectedPriceRange) ? "checked" : "" %>>
-                        </label>
-                        <label class="filter-item-row">
-                            <span>2.000.000đ - 3.000.000đ</span>
-                            <input type="radio" name="priceRange" value="2m_3m" class="filter-checkbox" <%= "2m_3m".equals(selectedPriceRange) ? "checked" : "" %>>
-                        </label>
-                        <label class="filter-item-row">
-                            <span>Trên 3.000.000đ</span>
-                            <input type="radio" name="priceRange" value="above_3m" class="filter-checkbox" <%= "above_3m".equals(selectedPriceRange) ? "checked" : "" %>>
-                        </label>
                     </div>
                 </div>
 
@@ -231,5 +200,37 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const filterForm = document.querySelector(".filter-card");
+
+        // Tự động submit khi chọn radio và hỗ trợ click lại để hủy chọn (toggle off)
+        const filterRadios = document.querySelectorAll('.filter-checkbox');
+        filterRadios.forEach(radio => {
+            if (radio.checked) {
+                radio.dataset.wasChecked = "true";
+            } else {
+                radio.dataset.wasChecked = "false";
+            }
+
+            radio.addEventListener("click", function () {
+                if (this.dataset.wasChecked === "true") {
+                    this.checked = false;
+                    this.dataset.wasChecked = "false";
+                } else {
+                    document.querySelectorAll('input[name="' + this.name + '"]').forEach(r => {
+                        r.dataset.wasChecked = "false";
+                    });
+                    this.dataset.wasChecked = "true";
+                }
+
+                if (filterForm) {
+                    filterForm.submit();
+                }
+            });
+        });
+    });
+</script>
 
 <jsp:include page="includes/footer.jsp" />
