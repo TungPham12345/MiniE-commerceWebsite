@@ -96,7 +96,11 @@ public class UserDAO {
         }
         if (mockUsers.isEmpty()) {
             mockUsers.add(new User(1, "admin", "123456", "Quản Trị Viên HighFashion", "admin@fashion.com", "0988776655", "Hà Nội, Việt Nam", 1));
-            mockUsers.add(new User(2, "customer1", "123456", "Nguyễn Văn An", "an.nguyen@gmail.com", "0912345678", "123 Nguyễn Trãi, Quận 5, TP.HCM", 0));
+            mockUsers.add(new User(2, "khachhang", "123456", "Nguyễn Văn An", "an.nguyen@gmail.com", "0912345678", "123 Nguyễn Trãi, Quận 5, TP.HCM", 0));
+            mockUsers.add(new User(1004, "khoshop", "123456", "Nhân Viên Kho Shop", "kho@fashion.com", "0901234001", "Tổng kho HighFashion Tân Bình, TP.HCM", 2));
+            mockUsers.add(new User(1005, "vanchuyen", "123456", "Điều Phối ĐVVC Express", "logistics@express.vn", "0901234002", "Bưu cục Trung tâm Vận Chuyển Express", 3));
+            mockUsers.add(new User(1006, "buucuc", "123456", "Thủ Kho Bưu Cục Phát (Hub Q5)", "hubq5@express.vn", "0901234003", "Bưu cục phát Quận 5, TP.HCM", 4));
+            mockUsers.add(new User(1007, "giaohang", "123456", "Shipper Nguyễn Văn Giao", "shipper@express.vn", "0901234004", "Đội giao hàng nhanh Quận 5", 5));
         }
     }
 
