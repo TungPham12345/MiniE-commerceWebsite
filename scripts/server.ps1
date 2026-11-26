@@ -43,6 +43,7 @@ $javaBin = if ($javaHome) { "$javaHome\bin" } else { "javac" }
 
 # 3. Dung CATALINA_BASE rieng de khong nap cac ung dung khac trong Tomcat dung chung
 $port         = 10000
+$shutdownPort = $port + 5
 $catalinaBase = "$workspaceRoot\build\tomcat-base"
 
 $url        = "http://localhost:$port/ban_hang/home"
@@ -51,6 +52,17 @@ $buildWeb   = "$workspaceRoot\build\web"
 $classesDir = "$buildWeb\WEB-INF\classes"
 $libDir     = "$buildWeb\WEB-INF\lib"
 $deployDir  = "$catalinaBase\webapps\ban_hang"
+
+function Test-PortListening {
+    param([int]$TargetPort)
+    $listeners = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners()
+    foreach ($endpoint in $listeners) {
+        if ($endpoint.Port -eq $TargetPort) {
+            return $true
+        }
+    }
+    return $false
+}
 
 function Initialize-IsolatedTomcatBase {
     if (-not $tomcatHome -or -not (Test-Path "$tomcatHome\conf\server.xml")) {
@@ -86,12 +98,23 @@ function Initialize-IsolatedTomcatBase {
     $serverConfig = New-Object System.Xml.XmlDocument
     $serverConfig.PreserveWhitespace = $true
     $serverConfig.Load($baseServerXml)
+    $configChanged = $false
+
+    $serverNode = $serverConfig.SelectSingleNode('/Server')
+    if ($null -ne $serverNode -and $serverNode.GetAttribute("port") -ne [string]$shutdownPort) {
+        $serverNode.SetAttribute("port", [string]$shutdownPort)
+        $configChanged = $true
+    }
+
     $connector = $serverConfig.SelectSingleNode('/Server/Service[@name="Catalina"]/Connector[@protocol="HTTP/1.1"]')
     if ($null -eq $connector) {
         throw "Khong tim thay HTTP Connector trong: $baseServerXml"
     }
     if ($connector.GetAttribute("port") -ne [string]$port) {
         $connector.SetAttribute("port", [string]$port)
+        $configChanged = $true
+    }
+    if ($configChanged) {
         $serverConfig.Save($baseServerXml)
     }
 
@@ -121,6 +144,7 @@ function Import-SmtpEnvironment {
 function Stop-TomcatServer {
     Write-Host "[STOP] Dang kiem tra va tat Tomcat tren cong $port..." -ForegroundColor Yellow
     $processes = Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+        $_.ProcessId -ne $PID -and $_.Name -match '^(java|javaw)\.exe$' -and
         $_.CommandLine -and $_.CommandLine.IndexOf($catalinaBase, [StringComparison]::OrdinalIgnoreCase) -ge 0
     }
     if (-not $processes) {
@@ -130,9 +154,9 @@ function Stop-TomcatServer {
 
     foreach ($process in $processes) {
         Write-Host "   Dung Tomcat rieng PID: $($process.ProcessId)" -ForegroundColor Gray
-        Stop-Process -Id $process.ProcessId -Force -ErrorAction Stop
+        Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
     }
-    Start-Sleep -Seconds 1
+    Start-Sleep -Milliseconds 500
     Write-Host "[OK] Da dung Tomcat rieng." -ForegroundColor Green
 }
 
@@ -195,8 +219,8 @@ function Build-Project {
 }
 
 function Start-TomcatServer {
-    $conns = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
-    if ($conns) {
+    if (Test-PortListening -TargetPort $port) {
+        $conns = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
         $processIds = $conns | Select-Object -ExpandProperty OwningProcess -Unique
         foreach ($processId in $processIds) {
             $process = Get-CimInstance Win32_Process -Filter "ProcessId=$processId" -ErrorAction SilentlyContinue
@@ -214,8 +238,7 @@ function Start-TomcatServer {
     Build-Project
     Initialize-IsolatedTomcatBase
 
-    $conns = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
-    if ($conns) {
+    if (Test-PortListening -TargetPort $port) {
         throw "Cong $port vua duoc tien trinh khac su dung. Khong khoi dong Tomcat."
     }
 
@@ -225,16 +248,28 @@ function Start-TomcatServer {
     $env:CATALINA_BASE = $catalinaBase
 
     $catBat = "$tomcatHome\bin\catalina.bat"
-    Start-Process -FilePath "cmd.exe" -ArgumentList "/c start `"Tomcat Server (HighFashion)`" `"$catBat`" run"
+    Start-Process -FilePath $catBat -ArgumentList "run" -WorkingDirectory "$tomcatHome\bin" | Out-Null
 
     Write-Host "[WAIT] Dang doi server khoi dong..." -ForegroundColor Yellow
     $ready = $false
-    for ($i = 0; $i -lt 30; $i++) {
-        Start-Sleep -Seconds 1
-        $testConn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
-        if ($testConn) {
-            $ready = $true
-            break
+    for ($i = 0; $i -lt 100; $i++) {
+        Start-Sleep -Milliseconds 300
+        if (Test-PortListening -TargetPort $port) {
+            try {
+                $req = [System.Net.HttpWebRequest]::Create("http://127.0.0.1:$port/")
+                $req.Method = "HEAD"
+                $req.Timeout = 1500
+                $res = $req.GetResponse()
+                $res.Close()
+                $ready = $true
+                break
+            } catch [System.Net.WebException] {
+                if ($null -ne $_.Exception.Response) {
+                    $_.Exception.Response.Close()
+                    $ready = $true
+                    break
+                }
+            } catch {}
         }
     }
 
